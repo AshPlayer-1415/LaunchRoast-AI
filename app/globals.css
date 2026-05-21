@@ -5,46 +5,51 @@
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #08090d;
-  --bg-elevated: #0f1218;
-  --bg-panel: rgba(19, 23, 31, 0.88);
-  --bg-panel-strong: rgba(14, 17, 24, 0.96);
-  --bg-soft: rgba(255, 255, 255, 0.025);
-  --line: rgba(226, 214, 190, 0.14);
-  --line-strong: rgba(226, 214, 190, 0.24);
-  --text: #f3ecdf;
-  --text-soft: #d8d0c1;
-  --text-muted: #948d82;
-  --accent: #8c92ff;
-  --accent-strong: #a6abff;
-  --accent-soft: rgba(140, 146, 255, 0.16);
-  --accent-glow: rgba(115, 129, 255, 0.22);
-  --success: #9bd8a4;
-  --success-soft: rgba(155, 216, 164, 0.14);
-  --texture: rgba(238, 226, 202, 0.03);
-  --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.28);
-  --shadow-panel: 0 32px 90px rgba(0, 0, 0, 0.34);
+  --bg: #09090c;
+  --bg-elevated: #101116;
+  --bg-panel: rgba(17, 19, 26, 0.9);
+  --bg-panel-strong: rgba(12, 14, 20, 0.97);
+  --bg-soft: rgba(244, 239, 230, 0.02);
+  --line: rgba(244, 239, 230, 0.1);
+  --line-strong: rgba(244, 239, 230, 0.2);
+  --text: #f4efe6;
+  --text-soft: rgba(244, 239, 230, 0.8);
+  --text-muted: rgba(244, 239, 230, 0.56);
+  --accent: #8d9bff;
+  --accent-strong: #b7befe;
+  --accent-soft: rgba(141, 155, 255, 0.15);
+  --accent-glow: rgba(111, 128, 255, 0.16);
+  --success: #97b68e;
+  --success-soft: rgba(151, 182, 142, 0.14);
+  --texture: rgba(244, 239, 230, 0.028);
+  --panel-contrast: rgba(244, 239, 230, 0.035);
+  --shadow-soft: 0 24px 72px rgba(0, 0, 0, 0.24);
+  --shadow-panel: 0 28px 90px rgba(0, 0, 0, 0.3);
+  --nav-height: 88px;
+  --gutter: clamp(1.2rem, 3vw, 2.5rem);
+  --section-pad: clamp(4.25rem, 7vw, 7.8rem);
 }
 
 [data-theme="neon"] {
   color-scheme: dark;
-  --bg: #06080f;
-  --bg-elevated: #0c1120;
-  --bg-panel: rgba(12, 18, 33, 0.88);
-  --bg-panel-strong: rgba(8, 13, 24, 0.96);
+  --bg: #06070d;
+  --bg-elevated: #0b0f1a;
+  --bg-panel: rgba(10, 15, 27, 0.91);
+  --bg-panel-strong: rgba(7, 11, 21, 0.97);
   --bg-soft: rgba(110, 128, 255, 0.05);
-  --line: rgba(119, 141, 255, 0.24);
-  --line-strong: rgba(123, 214, 255, 0.36);
-  --text: #f5f7ff;
-  --text-soft: #d7dcf6;
-  --text-muted: #8d97bf;
+  --line: rgba(133, 154, 255, 0.22);
+  --line-strong: rgba(126, 231, 255, 0.34);
+  --text: #f6f7ff;
+  --text-soft: rgba(246, 247, 255, 0.83);
+  --text-muted: rgba(184, 194, 232, 0.7);
   --accent: #7f8cff;
   --accent-strong: #7fe5ff;
   --accent-soft: rgba(127, 140, 255, 0.18);
-  --accent-glow: rgba(96, 118, 255, 0.34);
+  --accent-glow: rgba(96, 118, 255, 0.24);
   --success: #69efb6;
   --success-soft: rgba(105, 239, 182, 0.16);
   --texture: rgba(104, 126, 255, 0.045);
+  --panel-contrast: rgba(116, 136, 255, 0.04);
   --shadow-soft: 0 24px 80px rgba(13, 20, 48, 0.28);
   --shadow-panel:
     0 32px 90px rgba(8, 14, 28, 0.42),
@@ -171,7 +176,7 @@ summary::-webkit-details-marker {
 
 @layer components {
   .section-shell {
-    @apply px-4 py-16 sm:px-6 sm:py-20;
+    padding: var(--section-pad) var(--gutter);
   }
 
   .section-inner {
@@ -191,11 +196,7 @@ summary::-webkit-details-marker {
   }
 
   .mono-label {
-    font-family:
-      "SFMono-Regular",
-      "IBM Plex Mono",
-      "Menlo",
-      monospace;
+    font-family: var(--font-mono-ui), "SFMono-Regular", "IBM Plex Mono", "Menlo", monospace;
     font-size: 0.72rem;
     font-weight: 500;
     letter-spacing: 0.22em;
@@ -204,33 +205,29 @@ summary::-webkit-details-marker {
   }
 
   .editorial-heading {
-    font-family:
-      "Iowan Old Style",
-      "Palatino Linotype",
-      "Book Antiqua",
-      "Cormorant Garamond",
-      "Times New Roman",
-      serif;
-    font-size: clamp(2.35rem, 5vw, 4.8rem);
-    line-height: 0.96;
-    letter-spacing: -0.04em;
-    font-weight: 500;
+    font-family: var(--font-display), "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(3rem, 8vw, 7rem);
+    line-height: 0.88;
+    letter-spacing: -0.055em;
+    font-weight: 400;
     color: var(--text);
   }
 
   .editorial-heading-sm {
-    font-family:
-      "Iowan Old Style",
-      "Palatino Linotype",
-      "Book Antiqua",
-      "Cormorant Garamond",
-      "Times New Roman",
-      serif;
-    font-size: clamp(1.9rem, 3vw, 3rem);
-    line-height: 1;
-    letter-spacing: -0.03em;
-    font-weight: 500;
+    font-family: var(--font-display), "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: clamp(2rem, 5vw, 4.4rem);
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    font-weight: 400;
     color: var(--text);
+  }
+
+  .section-head {
+    display: grid;
+    grid-template-columns: 0.88fr 1.12fr;
+    gap: clamp(1.8rem, 5vw, 5rem);
+    align-items: end;
+    margin-bottom: clamp(2rem, 5vw, 4rem);
   }
 
   .body-copy {
@@ -241,7 +238,7 @@ summary::-webkit-details-marker {
   .surface-card {
     border: 1px solid var(--line);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
+      linear-gradient(180deg, var(--panel-contrast), rgba(255, 255, 255, 0.01)),
       var(--bg-panel);
     box-shadow: var(--shadow-soft);
     backdrop-filter: blur(18px);
@@ -250,7 +247,7 @@ summary::-webkit-details-marker {
   .surface-card-strong {
     border: 1px solid var(--line);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.014)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
       var(--bg-panel-strong);
     box-shadow: var(--shadow-panel);
     backdrop-filter: blur(18px);
@@ -261,13 +258,13 @@ summary::-webkit-details-marker {
   }
 
   .feature-panel {
-    @apply rounded-[26px] p-6;
+    @apply p-6;
     border: 1px solid var(--line);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.01));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.008));
   }
 
   .metric-panel {
-    @apply rounded-[24px] p-5;
+    @apply p-5;
     border: 1px solid var(--line);
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.012)),
@@ -275,7 +272,7 @@ summary::-webkit-details-marker {
   }
 
   .report-panel {
-    @apply rounded-[24px] p-5;
+    @apply p-5;
     border: 1px solid var(--line);
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.012)),
@@ -283,31 +280,32 @@ summary::-webkit-details-marker {
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-[16px] px-4 py-3 text-sm font-semibold transition duration-200;
-    color: white;
-    background:
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--accent) 88%, white) 0%,
-        color-mix(in srgb, var(--accent-strong) 40%, var(--accent)) 100%
-      );
-    box-shadow:
-      0 16px 40px var(--accent-glow),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    @apply inline-flex items-center justify-between gap-3 px-4 py-3 text-[0.74rem] font-medium transition duration-200;
+    min-width: 14rem;
+    color: var(--text);
+    font-family: var(--font-mono-ui), "SFMono-Regular", monospace;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    border: 1px solid var(--line-strong);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.028));
+    box-shadow: 0 10px 28px var(--accent-glow);
   }
 
   .btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow:
-      0 20px 46px var(--accent-glow),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-shadow: 0 14px 34px var(--accent-glow);
+    border-color: var(--line-strong);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-[16px] px-4 py-3 text-sm font-medium transition duration-200;
+    @apply inline-flex items-center justify-between gap-3 px-4 py-3 text-[0.74rem] font-medium transition duration-200;
+    min-width: 14rem;
     color: var(--text-soft);
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.028);
+    font-family: var(--font-mono-ui), "SFMono-Regular", monospace;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    border: 1px solid var(--line-strong);
+    background: rgba(255, 255, 255, 0.035);
   }
 
   .btn-secondary:hover {
@@ -324,12 +322,8 @@ summary::-webkit-details-marker {
   }
 
   .status-badge {
-    @apply inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] uppercase;
-    font-family:
-      "SFMono-Regular",
-      "IBM Plex Mono",
-      "Menlo",
-      monospace;
+    @apply inline-flex items-center gap-2 px-3 py-1.5 text-[11px] uppercase;
+    font-family: var(--font-mono-ui), "SFMono-Regular", "IBM Plex Mono", "Menlo", monospace;
     letter-spacing: 0.18em;
     border: 1px solid var(--line);
     color: var(--text-muted);
@@ -349,7 +343,7 @@ summary::-webkit-details-marker {
   }
 
   .input-shell {
-    @apply rounded-[28px] p-5 sm:p-6;
+    @apply p-5 sm:p-6;
     border: 1px solid var(--line);
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.014)),
@@ -358,7 +352,7 @@ summary::-webkit-details-marker {
   }
 
   .segmented-shell {
-    @apply grid grid-cols-2 gap-2 rounded-[18px] p-2;
+    @apply grid grid-cols-2 gap-2 p-2;
     border: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.02);
   }
@@ -396,19 +390,50 @@ summary::-webkit-details-marker {
     background: rgba(255, 255, 255, 0.04);
   }
 
+  .top-progress {
+    position: fixed;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    z-index: 75;
+  }
+
+  .top-progress-bar {
+    height: 100%;
+    width: var(--progress-width, 0%);
+    background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+    transform-origin: left center;
+  }
+
   .top-nav {
-    @apply sticky top-0 z-40 px-4 pb-2 pt-4 sm:px-6;
+    position: sticky;
+    top: 0;
+    z-index: 65;
+    padding: calc(env(safe-area-inset-top, 0px) + 1rem) var(--gutter) 0.9rem;
+    transform: translateY(var(--header-offset, 0px));
+    transition: transform 280ms ease, opacity 220ms ease;
   }
 
   .top-nav-inner {
-    @apply mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    width: 100%;
+    max-width: 80rem;
+    margin: 0 auto;
+    padding-bottom: 0.8rem;
     border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--bg) 84%, transparent);
+    background: color-mix(in srgb, var(--bg) 74%, transparent);
     backdrop-filter: blur(18px);
   }
 
   .nav-link {
-    @apply rounded-[14px] px-2.5 py-2 text-sm transition duration-200;
+    @apply px-2 py-2 text-[0.72rem] transition duration-200;
+    font-family: var(--font-mono-ui), "SFMono-Regular", monospace;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
     color: var(--text-muted);
   }
 
@@ -417,18 +442,14 @@ summary::-webkit-details-marker {
   }
 
   .theme-toggle-shell {
-    @apply inline-flex items-center rounded-full p-1;
+    @apply inline-flex items-center p-1;
     border: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.02);
   }
 
   .theme-toggle-option {
-    @apply rounded-full px-3 py-1.5 text-xs font-medium transition duration-200;
-    font-family:
-      "SFMono-Regular",
-      "IBM Plex Mono",
-      "Menlo",
-      monospace;
+    @apply px-3 py-1.5 text-xs font-medium transition duration-200;
+    font-family: var(--font-mono-ui), "SFMono-Regular", "IBM Plex Mono", "Menlo", monospace;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-muted);
@@ -451,11 +472,70 @@ summary::-webkit-details-marker {
   .print-copy-hidden {
     @apply no-print;
   }
+
+  .hero-frame {
+    position: absolute;
+    inset: 1.5rem;
+    border: 1px solid var(--line);
+    pointer-events: none;
+  }
+
+  .hero-board {
+    display: grid;
+    gap: 1rem;
+    align-self: stretch;
+  }
+
+  .mini-note {
+    border-top: 1px solid var(--line-strong);
+    padding-top: 0.8rem;
+    font-size: 0.76rem;
+    line-height: 1.8;
+    color: var(--text-muted);
+  }
+
+  .signal-board {
+    min-height: 17rem;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .signal-board-grid {
+    display: grid;
+    gap: 0.85rem;
+    align-content: end;
+    margin-top: 1.3rem;
+  }
+
+  .bar {
+    position: relative;
+    height: 1px;
+    background: color-mix(in srgb, var(--text) 18%, transparent);
+  }
+
+  .bar::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -1px;
+    height: 3px;
+    width: var(--bar-width, 50%);
+    background: var(--bar-color, var(--accent));
+    box-shadow: 0 0 18px color-mix(in srgb, var(--bar-color, var(--accent)) 34%, transparent);
+  }
 }
 
 @media (max-width: 768px) {
   .editorial-heading {
     letter-spacing: -0.05em;
+  }
+
+  .section-head {
+    grid-template-columns: 1fr;
+  }
+
+  .top-nav-inner {
+    grid-template-columns: auto auto;
   }
 }
 

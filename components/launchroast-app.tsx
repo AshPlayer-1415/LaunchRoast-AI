@@ -13,6 +13,7 @@ import {
   type WebsiteStatus,
 } from "@/lib/audit";
 import { trackEvent } from "@/lib/analytics";
+import { exportAuditReportPdf } from "@/lib/pdf-report";
 import { getStoredAuditCount, incrementStoredAuditCount } from "@/lib/storage";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -189,7 +190,13 @@ export function LaunchRoastApp() {
   const [copyStatusMessage, setCopyStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
-  const [isPrintingReport, setIsPrintingReport] = useState(false);
+  const [pdfErrorMessage, setPdfErrorMessage] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [submittedInputType, setSubmittedInputType] = useState<AuditInputType>("url");
+  const [submittedContent, setSubmittedContent] = useState("");
+  const [reportGeneratedAt, setReportGeneratedAt] = useState<string | null>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isHeaderCondensed, setIsHeaderCondensed] = useState(false);
 
   useEffect(() => {
     setAuditCount(getStoredAuditCount());
@@ -218,6 +225,24 @@ export function LaunchRoastApp() {
 
     return () => window.clearTimeout(timeout);
   }, [copyStatusMessage]);
+
+  useEffect(() => {
+    let lastScrollY = 0;
+
+    const handleScroll = () => {
+      const nextY = window.scrollY;
+      const maxScrollable = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = maxScrollable > 0 ? Math.min(100, (nextY / maxScrollable) * 100) : 0;
+      setScrollProgress(progress);
+      setIsHeaderCondensed(nextY > 60 && nextY > lastScrollY);
+      lastScrollY = nextY;
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const trimmedInput = input.trim();
   const canRunAudit = useMemo(() => trimmedInput.length > 6, [trimmedInput]);
@@ -272,6 +297,7 @@ export function LaunchRoastApp() {
     setIsLoading(true);
     setErrorMessage(null);
     setWarningMessage(null);
+    setPdfErrorMessage(null);
 
     trackEvent("audit_requested", {
       inputType: mode,
@@ -300,6 +326,9 @@ export function LaunchRoastApp() {
       setAuditSource(payload.source);
       setAuditModel(payload.model ?? null);
       setWarningMessage(payload.warning ?? null);
+      setSubmittedInputType(mode);
+      setSubmittedContent(trimmedInput);
+      setReportGeneratedAt(new Date().toISOString());
 
       trackEvent("audit_completed", {
         inputType: mode,
@@ -333,38 +362,44 @@ export function LaunchRoastApp() {
     }
   }
 
-  function handleExportReport() {
-    if (!result || isPrintingReport) {
+  async function handleExportReport() {
+    if (!result || isExportingPdf || !reportGeneratedAt) {
       return;
     }
 
-    const body = document.body;
-    const cleanup = () => {
-      body.classList.remove("printing-report");
-      setIsPrintingReport(false);
-    };
+    setPdfErrorMessage(null);
+    setIsExportingPdf(true);
 
-    setIsPrintingReport(true);
-    body.classList.add("printing-report");
-
-    const fallbackTimeout = window.setTimeout(cleanup, 2000);
-
-    const handleAfterPrint = () => {
-      window.clearTimeout(fallbackTimeout);
-      cleanup();
-    };
-
-    window.addEventListener("afterprint", handleAfterPrint, { once: true });
-    window.setTimeout(() => {
-      window.print();
-    }, 60);
+    try {
+      await exportAuditReportPdf({
+        audit: result,
+        source: auditSource ?? "mock",
+        model: auditModel,
+        inputType: submittedInputType,
+        submittedContent,
+        generatedAt: reportGeneratedAt,
+      });
+      trackEvent("pdf_exported", {
+        inputType: submittedInputType,
+        source: auditSource ?? "mock",
+      });
+    } catch {
+      setPdfErrorMessage("Unable to generate the PDF right now. Please try again.");
+    } finally {
+      setIsExportingPdf(false);
+    }
   }
 
   return (
     <main className="relative overflow-hidden">
-      <SiteHeader usageLabel={usageLabel} />
+      <SiteHeader
+        usageLabel={usageLabel}
+        scrollProgress={scrollProgress}
+        isCondensed={isHeaderCondensed}
+      />
 
-      <section className="section-shell pt-10 sm:pt-12">
+      <section className="section-shell relative overflow-hidden pt-[calc(var(--nav-height)+1.6rem)] sm:pt-[calc(var(--nav-height)+2.5rem)]">
+        <div className="hero-frame" />
         <div className="section-inner grid gap-10 lg:grid-cols-[minmax(0,1.08fr)_420px] lg:items-start">
           <div className="max-w-3xl">
             <p className="mono-label">Free AI-powered launch checker</p>
@@ -395,9 +430,9 @@ export function LaunchRoastApp() {
 
             <div className="mt-12 grid gap-4 lg:grid-cols-3">
               {heroNotes.map((note) => (
-                <article key={note.title} className="feature-panel min-h-[180px]">
+                <article key={note.title} className="mini-note min-h-[160px]">
                   <p className="mono-label">{note.label}</p>
-                  <h2 className="mt-4 text-lg font-medium tracking-[-0.02em] text-[color:var(--text)]">
+                  <h2 className="mt-4 text-base font-medium tracking-[-0.02em] text-[color:var(--text)]">
                     {note.title}
                   </h2>
                   <p className="mt-4 text-sm leading-7 text-[color:var(--text-soft)]">
@@ -500,12 +535,14 @@ export function LaunchRoastApp() {
 
       <section className="section-shell">
         <div className="section-inner">
-          <div className="max-w-2xl">
-            <p className="mono-label">Who this is for</p>
-            <h2 className="editorial-heading-sm mt-4">
-              Built for launch pages that need one more serious pass
-            </h2>
-            <p className="body-copy mt-5 max-w-xl">
+          <div className="section-head">
+            <div>
+              <p className="mono-label">Who this is for</p>
+              <h2 className="editorial-heading-sm mt-4">
+                Built for launch pages that need one more serious pass
+              </h2>
+            </div>
+            <p className="body-copy max-w-2xl">
               LaunchRoast AI works best when you already have a page, draft, or
               direction and want a sharper read before launch, a beta invite, or
               a public announcement.
@@ -532,11 +569,18 @@ export function LaunchRoastApp() {
 
       <section className="section-shell">
         <div className="section-inner">
-          <div className="max-w-2xl">
-            <p className="mono-label">What the audit checks</p>
-            <h2 className="editorial-heading-sm mt-4">
-              A calmer report on launch readiness, message quality, and trust
-            </h2>
+          <div className="section-head">
+            <div>
+              <p className="mono-label">What the audit checks</p>
+              <h2 className="editorial-heading-sm mt-4">
+                A calmer report on launch readiness, message quality, and trust
+              </h2>
+            </div>
+            <p className="body-copy max-w-2xl">
+              The structure here is designed to echo the pace of a real review:
+              first the promise, then the action, then the visible trust and live
+              status signals.
+            </p>
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -556,11 +600,18 @@ export function LaunchRoastApp() {
 
       <section id="preview" className="section-shell">
         <div className="section-inner">
-          <div className="max-w-2xl">
-            <p className="mono-label">Product preview</p>
-            <h2 className="editorial-heading-sm mt-4">
-              A signal board that reads like a real product, not an AI dump
-            </h2>
+          <div className="section-head">
+            <div>
+              <p className="mono-label">Product preview</p>
+              <h2 className="editorial-heading-sm mt-4">
+                A signal board that reads like a real product, not an AI dump
+              </h2>
+            </div>
+            <p className="body-copy max-w-2xl">
+              The preview borrows the reference rhythm: one primary board, a few
+              sharper metrics, and a compact sidebar that tells you where the next
+              rewrite should go.
+            </p>
           </div>
 
           <ProductPreview
@@ -635,15 +686,20 @@ export function LaunchRoastApp() {
                         {copyStatusMessage}
                       </p>
                     ) : null}
+                    {pdfErrorMessage ? (
+                      <p className="no-print mt-3 text-sm text-[rgb(224,120,120)]">
+                        {pdfErrorMessage}
+                      </p>
+                    ) : null}
                   </div>
 
                   <button
                     type="button"
                     onClick={handleExportReport}
-                    disabled={!result || isPrintingReport}
+                    disabled={!result || isExportingPdf || !reportGeneratedAt}
                     className="btn-secondary no-print"
                   >
-                    {isPrintingReport ? "Preparing PDF" : "Export PDF"}
+                    {isExportingPdf ? "Generating PDF" : "Export PDF"}
                   </button>
                 </div>
 
@@ -755,11 +811,18 @@ export function LaunchRoastApp() {
 
       <section className="section-shell">
         <div className="section-inner">
-          <div className="max-w-2xl">
-            <p className="mono-label">FAQ</p>
-            <h2 className="editorial-heading-sm mt-4">
-              Common questions before you run the check
-            </h2>
+          <div className="section-head">
+            <div>
+              <p className="mono-label">FAQ</p>
+              <h2 className="editorial-heading-sm mt-4">
+                Common questions before you run the check
+              </h2>
+            </div>
+            <p className="body-copy max-w-2xl">
+              The status check stays intentionally narrow. It is there to help you
+              decide whether a page is ready to share, not to turn the product
+              into a scanner.
+            </p>
           </div>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-2">
@@ -814,42 +877,61 @@ export function LaunchRoastApp() {
   );
 }
 
-function SiteHeader({ usageLabel }: { usageLabel: string }) {
+function SiteHeader({
+  usageLabel,
+  scrollProgress,
+  isCondensed,
+}: {
+  usageLabel: string;
+  scrollProgress: number;
+  isCondensed: boolean;
+}) {
   return (
-    <header className="top-nav no-print">
-      <div className="top-nav-inner">
-        <Link href="/" className="flex items-center gap-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-none border border-[color:var(--line)] bg-[rgba(255,255,255,0.025)]">
-            <span className="mono-label text-[10px] text-[color:var(--text)]">LR</span>
-          </div>
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-[color:var(--text)]">
-              LaunchRoast AI
-            </p>
-          </div>
-        </Link>
-
-        <nav className="hidden items-center gap-5 lg:flex">
-          <a href="#preview" className="nav-link">
-            Preview
-          </a>
-          <a href="#results" className="nav-link">
-            Report
-          </a>
-          <Link href="/privacy" className="nav-link">
-            Privacy
-          </Link>
-          <Link href="/terms" className="nav-link">
-            Terms
-          </Link>
-        </nav>
-
-        <div className="flex items-center gap-3">
-          <span className="status-badge hidden md:inline-flex">{usageLabel}</span>
-          <ThemeToggle />
-        </div>
+    <>
+      <div className="top-progress no-print">
+        <div
+          className="top-progress-bar"
+          style={{ ["--progress-width" as string]: `${scrollProgress}%` }}
+        />
       </div>
-    </header>
+      <header
+        className="top-nav no-print"
+        style={{ ["--header-offset" as string]: isCondensed ? "-14px" : "0px" }}
+      >
+        <div className="top-nav-inner">
+          <Link href="/" className="flex items-center gap-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-none border border-[color:var(--line)] bg-[rgba(255,255,255,0.025)]">
+              <span className="mono-label text-[10px] text-[color:var(--text)]">LR</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium uppercase tracking-[0.18em] text-[color:var(--text)]">
+                LaunchRoast AI
+              </p>
+            </div>
+          </Link>
+
+          <nav className="hidden items-center justify-center gap-5 lg:flex">
+            <a href="#preview" className="nav-link">
+              Preview
+            </a>
+            <a href="#results" className="nav-link">
+              Report
+            </a>
+            <Link href="/privacy" className="nav-link">
+              Privacy
+            </Link>
+            <Link href="/terms" className="nav-link">
+              Terms
+            </Link>
+          </nav>
+
+          <div className="flex items-center justify-end gap-3">
+            <span className="status-badge hidden xl:inline-flex">{usageLabel}</span>
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+    </>
   );
 }
 
@@ -874,7 +956,40 @@ function ProductPreview({
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="p-5 sm:p-6">
+        <div className="hero-board p-5 sm:p-6">
+          <div className="signal-board rounded-[26px] border border-[color:var(--line)] bg-[rgba(255,255,255,0.02)] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="mono-label">Launch signal board</p>
+              <span className="status-badge status-badge-positive">Ready to review</span>
+            </div>
+
+            <div className="signal-board-grid">
+              <div>
+                <p className="mono-label">Website status</p>
+                <div className="bar mt-3" style={{ ["--bar-width" as string]: "86%", ["--bar-color" as string]: "var(--success)" }} />
+              </div>
+              <div>
+                <p className="mono-label">Message clarity</p>
+                <div className="bar mt-3" style={{ ["--bar-width" as string]: "74%", ["--bar-color" as string]: "var(--accent)" }} />
+              </div>
+              <div>
+                <p className="mono-label">CTA strength</p>
+                <div className="bar mt-3" style={{ ["--bar-width" as string]: "68%", ["--bar-color" as string]: "var(--accent-strong)" }} />
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[20px] border border-[color:var(--line)] bg-[rgba(255,255,255,0.015)] p-4">
+                <p className="mono-label">Response time</p>
+                <p className="mt-3 text-sm text-[color:var(--text-soft)]">412ms and stable</p>
+              </div>
+              <div className="rounded-[20px] border border-[color:var(--line)] bg-[rgba(255,255,255,0.015)] p-4">
+                <p className="mono-label">HTTPS</p>
+                <p className="mt-3 text-sm text-[color:var(--text-soft)]">Enabled</p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-3">
             <PreviewMetric label="Clarity" score={clarityScore} />
             <PreviewMetric label="Trust" score={trustScore} />
