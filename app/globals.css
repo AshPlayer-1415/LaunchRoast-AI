@@ -2,18 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+[data-theme="dark"] {
   color-scheme: dark;
-  --background: #060812;
-  --background-elevated: #0b1020;
-  --panel: rgba(12, 17, 34, 0.84);
-  --panel-soft: rgba(255, 255, 255, 0.03);
-  --line: rgba(255, 255, 255, 0.08);
-  --text-primary: #f4f7fb;
-  --text-secondary: #c4cfde;
-  --text-muted: #7f8aa3;
-  --accent: #7d8dff;
-  --accent-strong: #6771ff;
+  --bg: #08090d;
+  --bg-elevated: #0f1218;
+  --bg-panel: rgba(19, 23, 31, 0.88);
+  --bg-panel-strong: rgba(14, 17, 24, 0.96);
+  --bg-soft: rgba(255, 255, 255, 0.025);
+  --line: rgba(226, 214, 190, 0.14);
+  --line-strong: rgba(226, 214, 190, 0.24);
+  --text: #f3ecdf;
+  --text-soft: #d8d0c1;
+  --text-muted: #948d82;
+  --accent: #8c92ff;
+  --accent-strong: #a6abff;
+  --accent-soft: rgba(140, 146, 255, 0.16);
+  --accent-glow: rgba(115, 129, 255, 0.22);
+  --success: #9bd8a4;
+  --success-soft: rgba(155, 216, 164, 0.14);
+  --texture: rgba(238, 226, 202, 0.03);
+  --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.28);
+  --shadow-panel: 0 32px 90px rgba(0, 0, 0, 0.34);
+}
+
+[data-theme="neon"] {
+  color-scheme: dark;
+  --bg: #06080f;
+  --bg-elevated: #0c1120;
+  --bg-panel: rgba(12, 18, 33, 0.88);
+  --bg-panel-strong: rgba(8, 13, 24, 0.96);
+  --bg-soft: rgba(110, 128, 255, 0.05);
+  --line: rgba(119, 141, 255, 0.24);
+  --line-strong: rgba(123, 214, 255, 0.36);
+  --text: #f5f7ff;
+  --text-soft: #d7dcf6;
+  --text-muted: #8d97bf;
+  --accent: #7f8cff;
+  --accent-strong: #7fe5ff;
+  --accent-soft: rgba(127, 140, 255, 0.18);
+  --accent-glow: rgba(96, 118, 255, 0.34);
+  --success: #69efb6;
+  --success-soft: rgba(105, 239, 182, 0.16);
+  --texture: rgba(104, 126, 255, 0.045);
+  --shadow-soft: 0 24px 80px rgba(13, 20, 48, 0.28);
+  --shadow-panel:
+    0 32px 90px rgba(8, 14, 28, 0.42),
+    0 0 0 1px rgba(91, 112, 255, 0.14),
+    0 0 46px rgba(84, 123, 255, 0.12);
 }
 
 * {
@@ -23,7 +59,7 @@
 *,
 *::before,
 *::after {
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--line);
 }
 
 html {
@@ -34,15 +70,14 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 12% 0%, rgba(125, 141, 255, 0.13), transparent 22%),
-    radial-gradient(circle at 82% 14%, rgba(126, 180, 255, 0.08), transparent 18%),
-    linear-gradient(180deg, #060812 0%, #0a0f1c 45%, #060812 100%);
-  color: var(--text-primary);
+    radial-gradient(circle at 14% 0%, var(--accent-soft), transparent 26%),
+    radial-gradient(circle at 86% 10%, rgba(112, 180, 255, 0.08), transparent 22%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 44%, var(--bg) 100%);
+  color: var(--text);
   font-family:
     "Sohne",
-    "SF Pro Display",
     "SF Pro Text",
-    "Neue Haas Grotesk Text Pro",
+    "Inter",
     "Segoe UI",
     sans-serif;
   text-rendering: optimizeLegibility;
@@ -54,13 +89,13 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.35), transparent 88%);
   pointer-events: none;
-  opacity: 0.24;
+  opacity: 0.9;
+  background-image:
+    linear-gradient(var(--texture) 1px, transparent 1px),
+    linear-gradient(90deg, var(--texture) 1px, transparent 1px);
+  background-size: 68px 68px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 88%);
 }
 
 body::after {
@@ -68,8 +103,8 @@ body::after {
   position: fixed;
   inset: auto 0 0 0;
   height: 280px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.3));
   pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.26));
 }
 
 a {
@@ -90,13 +125,27 @@ button {
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-a:focus-visible {
-  outline: 2px solid rgba(125, 141, 255, 0.55);
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, white);
   outline-offset: 2px;
 }
 
 textarea {
   resize: vertical;
+}
+
+summary {
+  list-style: none;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  color: white;
 }
 
 ::-webkit-scrollbar {
@@ -111,18 +160,303 @@ textarea {
 ::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.2);
   background-clip: padding-box;
 }
 
-::selection {
-  background: rgba(125, 141, 255, 0.34);
-  color: #ffffff;
+@layer components {
+  .section-shell {
+    @apply px-4 py-16 sm:px-6 sm:py-20;
+  }
+
+  .section-inner {
+    @apply mx-auto max-w-7xl;
+  }
+
+  .section-divider {
+    @apply px-4 sm:px-6;
+  }
+
+  .section-divider::before {
+    content: "";
+    display: block;
+    margin: 0 auto;
+    max-width: 80rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .mono-label {
+    font-family:
+      "SFMono-Regular",
+      "IBM Plex Mono",
+      "Menlo",
+      monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .editorial-heading {
+    font-family:
+      "Iowan Old Style",
+      "Palatino Linotype",
+      "Book Antiqua",
+      "Cormorant Garamond",
+      "Times New Roman",
+      serif;
+    font-size: clamp(2.35rem, 5vw, 4.8rem);
+    line-height: 0.96;
+    letter-spacing: -0.04em;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .editorial-heading-sm {
+    font-family:
+      "Iowan Old Style",
+      "Palatino Linotype",
+      "Book Antiqua",
+      "Cormorant Garamond",
+      "Times New Roman",
+      serif;
+    font-size: clamp(1.9rem, 3vw, 3rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .body-copy {
+    color: var(--text-soft);
+    line-height: 1.9;
+  }
+
+  .surface-card {
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
+      var(--bg-panel);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(18px);
+  }
+
+  .surface-card-strong {
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.014)),
+      var(--bg-panel-strong);
+    box-shadow: var(--shadow-panel);
+    backdrop-filter: blur(18px);
+  }
+
+  .card-grid {
+    @apply grid gap-4;
+  }
+
+  .feature-panel {
+    @apply rounded-[26px] p-6;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.01));
+  }
+
+  .metric-panel {
+    @apply rounded-[24px] p-5;
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.012)),
+      var(--bg-panel);
+  }
+
+  .report-panel {
+    @apply rounded-[24px] p-5;
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.012)),
+      var(--bg-panel);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-[16px] px-4 py-3 text-sm font-semibold transition duration-200;
+    color: white;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--accent) 88%, white) 0%,
+        color-mix(in srgb, var(--accent-strong) 40%, var(--accent)) 100%
+      );
+    box-shadow:
+      0 16px 40px var(--accent-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 20px 46px var(--accent-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-[16px] px-4 py-3 text-sm font-medium transition duration-200;
+    color: var(--text-soft);
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.028);
+  }
+
+  .btn-secondary:hover {
+    color: var(--text);
+    border-color: var(--line-strong);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled {
+    @apply cursor-not-allowed opacity-45;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] uppercase;
+    font-family:
+      "SFMono-Regular",
+      "IBM Plex Mono",
+      "Menlo",
+      monospace;
+    letter-spacing: 0.18em;
+    border: 1px solid var(--line);
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .status-badge-positive {
+    border-color: color-mix(in srgb, var(--success) 36%, transparent);
+    color: var(--success);
+    background: var(--success-soft);
+  }
+
+  .status-badge-accent {
+    border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+    color: color-mix(in srgb, var(--accent-strong) 58%, white);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .input-shell {
+    @apply rounded-[28px] p-5 sm:p-6;
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.014)),
+      var(--bg-panel-strong);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .segmented-shell {
+    @apply grid grid-cols-2 gap-2 rounded-[18px] p-2;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .segmented-option {
+    @apply rounded-[14px] px-4 py-3 text-sm font-medium transition duration-200;
+    color: var(--text-muted);
+  }
+
+  .segmented-option:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .segmented-option.is-active {
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+    background: color-mix(in srgb, var(--accent) 15%, rgba(255, 255, 255, 0.02));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .input-field {
+    @apply w-full rounded-[18px] px-4 py-4 text-[15px] outline-none transition;
+    color: var(--text);
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.028);
+  }
+
+  .input-field::placeholder {
+    color: color-mix(in srgb, var(--text-muted) 75%, transparent);
+  }
+
+  .input-field:focus {
+    border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .top-nav {
+    @apply sticky top-0 z-40 px-4 pb-2 pt-4 sm:px-6;
+  }
+
+  .top-nav-inner {
+    @apply mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg) 84%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
+  .nav-link {
+    @apply rounded-[14px] px-2.5 py-2 text-sm transition duration-200;
+    color: var(--text-muted);
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+  }
+
+  .theme-toggle-shell {
+    @apply inline-flex items-center rounded-full p-1;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .theme-toggle-option {
+    @apply rounded-full px-3 py-1.5 text-xs font-medium transition duration-200;
+    font-family:
+      "SFMono-Regular",
+      "IBM Plex Mono",
+      "Menlo",
+      monospace;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .theme-toggle-option.is-active {
+    color: var(--text);
+    background: color-mix(in srgb, var(--accent) 16%, rgba(255, 255, 255, 0.03));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .legal-shell {
+    @apply min-h-screen px-4 py-6 sm:px-6 sm:py-8;
+  }
+
+  .legal-shell-inner {
+    @apply mx-auto max-w-7xl;
+  }
+
+  .print-copy-hidden {
+    @apply no-print;
+  }
+}
+
+@media (max-width: 768px) {
+  .editorial-heading {
+    letter-spacing: -0.05em;
+  }
 }
 
 @media print {
@@ -131,8 +465,8 @@ textarea {
   }
 
   body {
-    background: #ffffff;
-    color: #111827;
+    background: #ffffff !important;
+    color: #111827 !important;
   }
 
   body::before,
@@ -173,7 +507,11 @@ textarea {
     background: #ffffff !important;
   }
 
-  .print-surface {
+  .print-surface,
+  .surface-card,
+  .surface-card-strong,
+  .report-panel,
+  .metric-panel {
     box-shadow: none !important;
     border: 1px solid #e5e7eb !important;
     background: #ffffff !important;
@@ -189,10 +527,6 @@ textarea {
 
   .print-card {
     background: #ffffff !important;
-  }
-
-  .print-section {
-    break-inside: avoid;
   }
 
   .print-card,

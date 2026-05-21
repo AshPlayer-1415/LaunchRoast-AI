@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   if (!process.env.OPENROUTER_API_KEY) {
     return buildMockResponse(
       mockAudit,
-      combineWarnings(preparation.warning, "OPENROUTER_API_KEY is not set, so this audit is using the local fallback."),
+      combineWarnings(preparation.warning, "Live AI is not configured, so this audit is using the local fallback."),
     );
   }
 

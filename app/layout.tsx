@@ -56,8 +56,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{var t=localStorage.getItem("launchroast-theme");document.documentElement.dataset.theme=t==="neon"?"neon":"dark";}catch(e){document.documentElement.dataset.theme="dark";}',
+          }}
+        />
         <AnalyticsProvider />
         {children}
       </body>
