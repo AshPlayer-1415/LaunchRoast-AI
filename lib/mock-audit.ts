@@ -1,9 +1,15 @@
-import type { AuditInputType, AuditResult, TrustSafetyReview } from "@/lib/audit";
+import type {
+  AuditInputType,
+  AuditResult,
+  TrustSafetyReview,
+  WebsiteStatus,
+} from "@/lib/audit";
 
 export type MockAuditRequest = {
   inputType: AuditInputType;
   content: string;
   url?: string;
+  websiteStatus?: WebsiteStatus;
 };
 
 const fillerWords = new Set([
@@ -20,7 +26,7 @@ const trustIdeas = [
   "Add one specific customer outcome with a measurable result near the hero.",
   "Show recognizable logos or a short proof strip above the fold.",
   "Include a founder, team, or product screenshot so the page feels real.",
-  "Answer the first objection directly with a short FAQ near pricing.",
+  "Answer the first objection directly with a short FAQ near the main CTA.",
 ];
 
 function normalizeInput(input: string) {
@@ -150,6 +156,7 @@ export function generateMockAudit({
   inputType,
   content,
   url,
+  websiteStatus,
 }: MockAuditRequest): AuditResult {
   const normalized = normalizeInput(content);
   const words = normalized.split(" ").filter(Boolean);
@@ -212,19 +219,16 @@ export function generateMockAudit({
 
   const finalLandingCopy = [
     "Headline",
-    `Fix the message leak before visitors bounce from ${domainLabel}.`,
+    `Check whether ${domainLabel} is ready to share before visitors bounce.`,
     "",
     "Subheadline",
-    "Get an instant landing page roast with a clarity score, stronger headline, sharper CTA, pricing feedback, and trust fixes your team can ship today.",
+    "Get an instant launch-readiness roast with a clarity score, stronger headline, sharper CTA, offer feedback, trust fixes, and a live website status check when a public URL is available.",
     "",
     "Primary CTA",
-    "Roast My Page",
+    "Check my website",
     "",
     "Proof strip",
-    "Built for founders, SaaS marketers, and product teams tightening conversion before spending more on traffic.",
-    "",
-    "Pricing nudge",
-    "Try one free audit, then upgrade when you want more iterations.",
+    "Built for founders, students, indie builders, and product teams tightening their message before launch.",
   ].join("\n");
 
   return {
@@ -236,5 +240,6 @@ export function generateMockAudit({
     trustSuggestions,
     finalLandingCopy,
     trustSafetyReview,
+    websiteStatus,
   };
 }

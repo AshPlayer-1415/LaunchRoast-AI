@@ -32,9 +32,9 @@ export default function TermsPage() {
             "The product may rely on third-party AI providers and public web fetching. Availability, latency, and output quality can vary based on those dependencies.",
         },
         {
-          heading: "Optional support",
+          heading: "Status checks",
           body:
-            "LaunchRoast AI is free to use in this early version. If an external support link is added, any optional support happens off-site and is not processed inside the app.",
+            "For public URLs, LaunchRoast AI may run a passive website status check to report reachability, HTTP response details, redirects, HTTPS usage, and response timing. It does not run vulnerability scans or exploit testing.",
         },
         {
           heading: "Contact",

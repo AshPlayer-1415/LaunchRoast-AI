@@ -7,14 +7,17 @@ import {
   type AuditResponseBody,
   type AuditResult,
   type TrustSafetyReview,
+  type WebsiteStatus,
 } from "@/lib/audit";
 import { generateMockAudit } from "@/lib/mock-audit";
 
 export const runtime = "nodejs";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_MODEL = "openrouter/free";
+const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
 const MAX_SOURCE_CHARS = 6000;
+const FETCH_TIMEOUT_MS = 8000;
+const MAX_REDIRECTS = 5;
 
 type OpenRouterChatResponse = {
   model?: string;
@@ -29,6 +32,7 @@ type FetchPreparation = {
   contentForAudit: string;
   warning?: string;
   url?: string;
+  websiteStatus?: WebsiteStatus;
 };
 
 class AuditRouteError extends Error {
@@ -61,12 +65,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid audit request." }, { status: 400 });
   }
 
-  const mockAudit = generateMockAudit({
-    inputType: parsedBody.inputType,
-    content: parsedBody.content,
-    url: parsedBody.inputType === "url" ? parsedBody.content : undefined,
-  });
-
   let preparation: FetchPreparation = {
     contentForAudit: parsedBody.content,
   };
@@ -78,23 +76,25 @@ export async function POST(request: Request) {
         : { contentForAudit: parsedBody.content };
   } catch (error) {
     if (error instanceof AuditRouteError) {
-      if (error.status >= 500) {
-        return buildMockResponse(mockAudit, "We could not fetch that URL, so this audit is using fallback heuristics.");
-      }
-
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
-    return buildMockResponse(mockAudit, "We could not fetch that URL, so this audit is using fallback heuristics.");
+    return NextResponse.json(
+      { error: "Unable to process that audit request right now." },
+      { status: 500 },
+    );
   }
+
+  const mockAudit = generateMockAudit({
+    inputType: parsedBody.inputType,
+    content: preparation.contentForAudit,
+    url: preparation.url,
+    websiteStatus: preparation.websiteStatus,
+  });
 
   if (!process.env.OPENROUTER_API_KEY) {
     return buildMockResponse(
-      generateMockAudit({
-        inputType: parsedBody.inputType,
-        content: preparation.contentForAudit,
-        url: preparation.url,
-      }),
+      mockAudit,
       combineWarnings(preparation.warning, "OPENROUTER_API_KEY is not set, so this audit is using the local fallback."),
     );
   }
@@ -104,10 +104,11 @@ export async function POST(request: Request) {
       inputType: parsedBody.inputType,
       content: preparation.contentForAudit,
       url: preparation.url,
+      websiteStatus: preparation.websiteStatus,
     });
 
     const responseBody: AuditResponseBody = {
-      audit,
+      audit: attachWebsiteStatus(audit, preparation.websiteStatus),
       model,
       source: "openrouter",
       warning: preparation.warning,
@@ -116,11 +117,7 @@ export async function POST(request: Request) {
     return NextResponse.json(responseBody);
   } catch {
     return buildMockResponse(
-      generateMockAudit({
-        inputType: parsedBody.inputType,
-        content: preparation.contentForAudit,
-        url: preparation.url,
-      }),
+      mockAudit,
       combineWarnings(
         preparation.warning,
         "The live AI audit failed, so this result is using the local fallback.",
@@ -155,6 +152,14 @@ async function prepareUrlAuditContent(rawUrl: string): Promise<FetchPreparation>
     return {
       contentForAudit: rawUrl,
       warning: "This does not look like a valid URL. We analyzed the text you pasted instead.",
+      websiteStatus: {
+        checked: false,
+        inputUrl: rawUrl,
+        isOnline: false,
+        redirected: false,
+        usesHttps: false,
+        error: "Invalid URL format.",
+      },
     };
   }
 
@@ -164,31 +169,73 @@ async function prepareUrlAuditContent(rawUrl: string): Promise<FetchPreparation>
     throw new AuditRouteError("Please enter a public http(s) URL. Local and private network addresses are not supported.");
   }
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    let response: Response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const startedAt = Date.now();
 
-    try {
-      response = await fetch(parsedUrl.toString(), {
+  try {
+    let currentUrl = parsedUrl;
+    let redirectCount = 0;
+    let response: Response | null = null;
+
+    while (redirectCount <= MAX_REDIRECTS) {
+      response = await fetch(currentUrl.toString(), {
+        method: "GET",
         signal: controller.signal,
         headers: {
           "User-Agent": "LaunchRoastAI/1.0",
         },
-        redirect: "follow",
+        redirect: "manual",
       });
-    } finally {
-      clearTimeout(timeout);
+
+      if (!isRedirectStatus(response.status)) {
+        break;
+      }
+
+      const location = response.headers.get("location");
+      if (!location) {
+        break;
+      }
+
+      const redirectedUrl = new URL(location, currentUrl);
+      if (!isPublicHostname(redirectedUrl.hostname)) {
+        throw new AuditRouteError("The destination URL is not a supported public landing page.", 400);
+      }
+
+      currentUrl = redirectedUrl;
+      redirectCount += 1;
     }
 
-    if (!response.ok) {
-      throw new AuditRouteError("Failed to fetch landing page content.", 502);
+    if (!response) {
+      throw new Error("No response returned.");
     }
 
-    const finalUrl = new URL(response.url);
+    if (redirectCount > MAX_REDIRECTS) {
+      throw new Error("Too many redirects.");
+    }
 
-    if (!isPublicHostname(finalUrl.hostname)) {
-      throw new AuditRouteError("The destination URL is not a supported public landing page.", 400);
+    const finalUrl = new URL(currentUrl.toString());
+    const responseTimeMs = Date.now() - startedAt;
+    const websiteStatus: WebsiteStatus = {
+      checked: true,
+      inputUrl: rawUrl,
+      finalUrl: redirectCount > 0 ? finalUrl.toString() : undefined,
+      isOnline: response.status >= 200 && response.status < 400,
+      statusCode: response.status,
+      statusText: response.statusText || undefined,
+      responseTimeMs,
+      redirected: redirectCount > 0,
+      redirectCount,
+      usesHttps: finalUrl.protocol === "https:",
+    };
+
+    if (!websiteStatus.isOnline) {
+      return {
+        contentForAudit: rawUrl,
+        url: finalUrl.toString(),
+        websiteStatus,
+        warning: `The website responded with HTTP ${response.status}, so the audit is using lighter fallback heuristics for the live page copy.`,
+      };
     }
 
     const html = await response.text();
@@ -198,20 +245,39 @@ async function prepareUrlAuditContent(rawUrl: string): Promise<FetchPreparation>
       return {
         contentForAudit: rawUrl,
         url: finalUrl.toString(),
-        warning: "We fetched the page, but could not extract enough visible copy. This audit is using a lighter fallback.",
+        websiteStatus,
+        warning: "We reached the page, but could not extract enough visible copy. This audit is using a lighter fallback.",
       };
     }
 
     return {
       contentForAudit: extractedText.slice(0, MAX_SOURCE_CHARS),
       url: finalUrl.toString(),
+      websiteStatus,
     };
   } catch (error) {
+    const responseTimeMs = Date.now() - startedAt;
+
     if (error instanceof AuditRouteError) {
       throw error;
     }
 
-    throw new AuditRouteError("Failed to fetch landing page content.", 502);
+    return {
+      contentForAudit: rawUrl,
+      url: parsedUrl.toString(),
+      websiteStatus: {
+        checked: true,
+        inputUrl: rawUrl,
+        isOnline: false,
+        redirected: false,
+        usesHttps: parsedUrl.protocol === "https:",
+        responseTimeMs,
+        error: getStatusErrorMessage(error),
+      },
+      warning: "We could not reach that live URL, so the audit is using fallback heuristics for the page content.",
+    };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -267,11 +333,14 @@ async function generateOpenRouterAudit({
   inputType,
   content,
   url,
+  websiteStatus,
 }: {
   inputType: AuditRequestBody["inputType"];
   content: string;
   url?: string;
+  websiteStatus?: WebsiteStatus;
 }) {
+  const model = process.env.OPENROUTER_MODEL?.trim() || DEFAULT_OPENROUTER_MODEL;
   // This request contract is intentionally isolated so model, prompt, and routing
   // can be swapped later without changing the UI or route response shape.
   const response = await fetch(OPENROUTER_ENDPOINT, {
@@ -281,7 +350,7 @@ async function generateOpenRouterAudit({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: OPENROUTER_MODEL,
+      model,
       temperature: 0.2,
       max_tokens: 1200,
       response_format: { type: "json_object" },
@@ -293,7 +362,7 @@ async function generateOpenRouterAudit({
         },
         {
           role: "user",
-          content: buildAuditPrompt({ inputType, content, url }),
+          content: buildAuditPrompt({ inputType, content, url, websiteStatus }),
         },
       ],
     }),
@@ -308,7 +377,7 @@ async function generateOpenRouterAudit({
   const parsed = JSON.parse(rawContent);
   return {
     audit: validateAuditResult(parsed),
-    model: payload.model ?? OPENROUTER_MODEL,
+    model: payload.model ?? model,
   };
 }
 
@@ -316,16 +385,38 @@ function buildAuditPrompt({
   inputType,
   content,
   url,
+  websiteStatus,
 }: {
   inputType: AuditInputType;
   content: string;
   url?: string;
+  websiteStatus?: WebsiteStatus;
 }) {
   if (inputType === "url" && url) {
+    const statusContext = websiteStatus
+      ? [
+          "Website status context:",
+          `- Checked: ${websiteStatus.checked ? "yes" : "no"}`,
+          `- Online: ${websiteStatus.isOnline ? "yes" : "no"}`,
+          websiteStatus.statusCode ? `- HTTP status: ${websiteStatus.statusCode}` : undefined,
+          websiteStatus.responseTimeMs
+            ? `- Response time: ${websiteStatus.responseTimeMs}ms`
+            : undefined,
+          `- HTTPS: ${websiteStatus.usesHttps ? "yes" : "no"}`,
+          `- Redirected: ${websiteStatus.redirected ? "yes" : "no"}`,
+          websiteStatus.finalUrl ? `- Final URL: ${websiteStatus.finalUrl}` : undefined,
+          websiteStatus.error ? `- Status error: ${websiteStatus.error}` : undefined,
+          "",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : "";
+
     return [
       "Audit this startup landing page using the extracted visible copy below.",
       `Source URL: ${url}`,
       "",
+      statusContext,
       "Extracted landing page text:",
       content,
       "",
@@ -417,6 +508,17 @@ function validateAuditResult(value: unknown): AuditResult {
   };
 }
 
+function attachWebsiteStatus(audit: AuditResult, websiteStatus?: WebsiteStatus): AuditResult {
+  if (!websiteStatus) {
+    return audit;
+  }
+
+  return {
+    ...audit,
+    websiteStatus,
+  };
+}
+
 function validateTrustSafetyReview(value: unknown): TrustSafetyReview {
   if (!value || typeof value !== "object") {
     throw new Error("Audit response did not include a valid trustSafetyReview.");
@@ -477,4 +579,22 @@ function buildMockResponse(audit: AuditResult, warning?: string) {
 function combineWarnings(...warnings: Array<string | undefined>) {
   const filtered = warnings.filter(Boolean);
   return filtered.length > 0 ? filtered.join(" ") : undefined;
+}
+
+function isRedirectStatus(status: number) {
+  return status >= 300 && status < 400;
+}
+
+function getStatusErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    if (error.name === "AbortError") {
+      return "The request timed out before the website responded.";
+    }
+
+    if (error.message === "Too many redirects.") {
+      return "The website redirected too many times to complete a status check.";
+    }
+  }
+
+  return "The website could not be reached during the status check.";
 }

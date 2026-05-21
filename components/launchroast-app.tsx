@@ -10,6 +10,7 @@ import {
   type AuditResponseBody,
   type AuditResult,
   type TrustSafetyReview,
+  type WebsiteStatus,
 } from "@/lib/audit";
 import { trackEvent } from "@/lib/analytics";
 import { getStoredAuditCount, incrementStoredAuditCount } from "@/lib/storage";
@@ -19,7 +20,7 @@ const tabOptions: { id: AuditInputType; label: string; helper: string }[] = [
     id: "url",
     label: "Homepage URL",
     helper:
-      "Use a public landing page URL when you want launch-readiness feedback based on the page itself.",
+      "Use a public landing page URL when you want live status checks and launch-readiness feedback based on the page itself.",
   },
   {
     id: "copy",
@@ -30,8 +31,8 @@ const tabOptions: { id: AuditInputType; label: string; helper: string }[] = [
 ];
 
 const productSignals = [
-  "Clarity score with concise buyer-focused feedback",
-  "Headline, CTA, and offer feedback that feel product-aware",
+  "AI roast with clearer messaging and stronger headline direction",
+  "Passive live status check for public website URLs",
   "Trust-signal review without invasive or scanner-like behavior",
 ];
 
@@ -39,38 +40,44 @@ const whoItsFor = [
   {
     title: "Founders before launch",
     description:
-      "Use it to tighten the homepage before early users, investors, or beta traffic form the wrong impression.",
+      "Use it to confirm the site is reachable, the message is clear, and the page feels ready before you share it publicly.",
   },
   {
     title: "Students and indie builders",
     description:
-      "Use it when you want sharper positioning, CTA language, and cleaner launch copy before sharing the product publicly.",
+      "Use it when you want a fast launch-readiness check without setting up analytics, QA tools, or a longer review process.",
   },
   {
-    title: "Product teams rewriting copy",
+    title: "Teams polishing launch pages",
     description:
-      "Use it to turn rough draft copy into a more structured message before design polish or paid traffic.",
+      "Use it to turn rough draft copy or a live page into a more structured launch report before a release, beta, or announcement.",
   },
 ];
 
 const auditChecks = [
   "Clarity of the core value proposition",
   "Headline strength and CTA specificity",
-  "Pricing friction and offer clarity",
+  "Offer friction and launch readiness",
   "Trust signals, privacy cues, and contact transparency",
+  "Live website availability, redirects, HTTPS, and response timing for public URLs",
   "Launch readiness for a first-time visitor",
 ];
 
 const faqs = [
   {
-    question: "Do you scan my website for vulnerabilities?",
+    question: "Is LaunchRoast AI free?",
+    answer:
+      "Yes. LaunchRoast AI is fully free in the current version.",
+  },
+  {
+    question: "Do you scan for vulnerabilities?",
     answer:
       "No. The Trust & Safety Review is passive and non-invasive. It comments on visible trust signals and basic safety signals only.",
   },
   {
-    question: "Can I use this before launch?",
+    question: "What does the website status check do?",
     answer:
-      "Yes. You can use it on a live homepage or on draft copy before the page is published.",
+      "For live public URLs, it checks whether the page is reachable, how it responds, whether it redirects, whether it uses HTTPS, and how long the request takes. It does not probe exploits or hidden paths.",
   },
   {
     question: "Can I paste draft copy instead of a URL?",
@@ -78,14 +85,9 @@ const faqs = [
       "Yes. Switch to the draft copy tab and paste your headline, subheadline, CTA, proof, and pricing copy.",
   },
   {
-    question: "Is the tool free?",
+    question: "What happens if the AI API is not configured?",
     answer:
-      "Yes. LaunchRoast AI is free during this early version. Optional support helps keep it running.",
-  },
-  {
-    question: "Do I need an account?",
-    answer:
-      "No. The current version does not require an account or authentication.",
+      "The app falls back to a local mock audit response so you can still test the interface and workflow without a live AI key.",
   },
 ];
 
@@ -93,17 +95,17 @@ const previewRows = [
   {
     label: "Headline rewrite",
     before: "AI for revenue teams",
-    after: "Roast your landing page before customers do.",
+    after: "Check if your website is ready to launch.",
   },
   {
     label: "CTA rewrite",
     before: "Learn more",
-    after: "Get my landing page review",
+    after: "Check my website",
   },
   {
-    label: "Trust signal",
-    before: "Generic security claims",
-    after: "Visible privacy, contact, and data-handling cues",
+    label: "Website status",
+    before: "Unknown launch state",
+    after: "Online, HTTPS enabled, fast enough to share",
   },
 ];
 
@@ -120,6 +122,20 @@ function formatTrustSafetyReview(review: TrustSafetyReview) {
     "Recommended fixes:",
     ...review.recommendedFixes.map((fix) => `- ${fix}`),
   ].join("\n");
+}
+
+function formatWebsiteStatus(status: WebsiteStatus) {
+  return [
+    `Status: ${status.isOnline ? "Online" : "Down"}`,
+    status.statusCode ? `HTTP status: ${status.statusCode}${status.statusText ? ` ${status.statusText}` : ""}` : "HTTP status: unavailable",
+    status.responseTimeMs ? `Response time: ${status.responseTimeMs}ms` : "Response time: unavailable",
+    `HTTPS: ${status.usesHttps ? "Yes" : "No"}`,
+    `Redirected: ${status.redirected ? "Yes" : "No"}`,
+    status.finalUrl ? `Final URL: ${status.finalUrl}` : undefined,
+    status.error ? `Error: ${status.error}` : undefined,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function getCtaStrengthScore(result: AuditResult) {
@@ -208,7 +224,7 @@ export function LaunchRoastApp() {
 
   const usageLabel =
     auditCount > 0
-      ? `${auditCount} ${auditCount === 1 ? "roast" : "roasts"} run in this browser`
+      ? `${auditCount} ${auditCount === 1 ? "check" : "checks"} run in this browser`
       : "Free tool";
 
   const isAuditDisabled = !canRunAudit || isLoading;
@@ -216,17 +232,21 @@ export function LaunchRoastApp() {
   const ctaStrengthScore = result ? getCtaStrengthScore(result) : 84;
   const trustScore = result?.trustSafetyReview.trustScore ?? 78;
   const clarityScore = result?.clarityScore ?? 81;
-  const supportUrl = process.env.NEXT_PUBLIC_SUPPORT_URL?.trim() ?? "";
 
-  function openSupportLink() {
-    if (!supportUrl) {
-      return;
-    }
-
-    trackEvent("support_clicked", {
-      location: "support_section",
+  function jumpToDraftCopy() {
+    setMode("copy");
+    document.getElementById("audit-input")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
     });
-    window.open(supportUrl, "_blank", "noopener,noreferrer");
+  }
+
+  function jumpToUrlInput() {
+    setMode("url");
+    document.getElementById("audit-input")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }
 
   async function handleAudit() {
@@ -332,32 +352,34 @@ export function LaunchRoastApp() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">
               <span className="h-1.5 w-1.5 rounded-full bg-[rgba(124,140,255,0.9)]" />
-              Launch readiness for SaaS pages
+              Free AI-powered launch checker
             </div>
 
             <h1 className="mt-6 max-w-2xl text-[2.45rem] font-semibold leading-[1.02] tracking-[-0.045em] text-white sm:text-[3rem] lg:text-[3.35rem]">
-              Roast your landing page before customers do.
+              Check if your website is ready to launch.
             </h1>
 
             <p className="mt-5 max-w-xl text-[1.02rem] leading-8 text-slate-300">
-              Paste a homepage or draft copy and get a structured review of
-              clarity, CTA strength, offer friction, trust signals, and launch
-              readiness.
+              Paste a live URL or draft copy to get an AI roast,
+              launch-readiness report, trust-signal review, and live website
+              status check.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <a
-                href="#audit-input"
+              <button
+                type="button"
+                onClick={jumpToUrlInput}
                 className="inline-flex items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,#7d8dff_0%,#6f74ff_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_40px_rgba(73,89,255,0.28)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(73,89,255,0.34)]"
               >
-                Start a roast
-              </a>
-              <a
-                href="#preview"
+                Check my website
+              </button>
+              <button
+                type="button"
+                onClick={jumpToDraftCopy}
                 className="inline-flex items-center justify-center rounded-[14px] border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-slate-300 transition duration-200 hover:border-white/16 hover:bg-white/[0.05] hover:text-white"
               >
-                See the product view
-              </a>
+                Paste draft copy
+              </button>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -406,7 +428,7 @@ export function LaunchRoastApp() {
                     {tabOptions.find((tab) => tab.id === mode)?.helper}
                   </p>
                   <div className="hidden rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 sm:block">
-                    API ready
+                    Live URL aware
                   </div>
                 </div>
 
@@ -418,7 +440,7 @@ export function LaunchRoastApp() {
                     <input
                       value={input}
                       onChange={(event) => setInput(event.target.value)}
-                      placeholder="https://your-startup.com"
+                      placeholder="https://your-site.com"
                       className="w-full rounded-[18px] border border-white/10 bg-[rgba(255,255,255,0.035)] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-slate-600 focus:border-[rgba(123,136,255,0.55)] focus:bg-[rgba(255,255,255,0.05)]"
                     />
                   </label>
@@ -430,7 +452,7 @@ export function LaunchRoastApp() {
                     <textarea
                       value={input}
                       onChange={(event) => setInput(event.target.value)}
-                      placeholder="Paste your hero, subheadline, CTA, proof points, and pricing copy..."
+                      placeholder="Paste your hero, subheadline, CTA, proof points, and offer copy..."
                       rows={9}
                       className="w-full rounded-[18px] border border-white/10 bg-[rgba(255,255,255,0.035)] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-slate-600 focus:border-[rgba(123,136,255,0.55)] focus:bg-[rgba(255,255,255,0.05)]"
                     />
@@ -442,7 +464,9 @@ export function LaunchRoastApp() {
                   <p className="text-sm text-slate-500">
                     {inlineUrlWarning ??
                       validationMessage ??
-                      "Live AI is used when available. A local fallback keeps the tool usable either way."}
+                      (mode === "url"
+                        ? "Live URLs get a passive status check with reachability, redirects, HTTPS, and response timing."
+                        : "Live AI is used when available. A local fallback keeps the tool usable either way.")}
                   </p>
                 </div>
 
@@ -453,7 +477,7 @@ export function LaunchRoastApp() {
                   className="mt-5 inline-flex w-full items-center justify-center gap-3 rounded-[18px] bg-[linear-gradient(135deg,#7d8dff_0%,#6d74ff_100%)] px-5 py-4 text-sm font-semibold text-white shadow-[0_16px_42px_rgba(83,93,255,0.28)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_rgba(83,93,255,0.34)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
                 >
                   {isLoading ? <LoadingSpinner /> : null}
-                  <span>{isLoading ? "Generating review" : "Roast my page"}</span>
+                  <span>{isLoading ? "Generating report" : "Check my website"}</span>
                 </button>
 
                 <div className="mt-4 space-y-3">
@@ -467,7 +491,7 @@ export function LaunchRoastApp() {
 
                 <div className="mt-5 flex items-center justify-between border-t border-white/8 pt-4 text-xs text-slate-500">
                   <span>Free early tool</span>
-                  <span>PDF export included</span>
+                  <span>Status check for public URLs</span>
                 </div>
               </div>
             </div>
@@ -477,7 +501,7 @@ export function LaunchRoastApp() {
 
       <SectionDivider />
 
-      <section id="report-section" className="px-4 py-14 sm:px-6 sm:py-16">
+      <section className="px-4 py-14 sm:px-6 sm:py-16">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
@@ -485,12 +509,12 @@ export function LaunchRoastApp() {
                 Who this is for
               </p>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
-                Built for teams refining the page before it meets real traffic
+                Built for people checking the page before they share it
               </h2>
               <p className="mt-4 max-w-xl text-base leading-7 text-slate-400">
                 LaunchRoast AI works best when you already have a page, draft,
                 or positioning direction and want a sharper outside read before
-                launch or iteration.
+                launch, a beta invite, or a public announcement.
               </p>
             </div>
 
@@ -521,9 +545,9 @@ export function LaunchRoastApp() {
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
               What the audit checks
             </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
-              A concise review of message quality and launch confidence
-            </h2>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
+                A concise review of launch readiness and message quality
+              </h2>
             <p className="mt-4 text-base leading-7 text-slate-400">
               The audit focuses on what a first-time visitor is likely to notice,
               question, or misunderstand before taking action.
@@ -549,9 +573,9 @@ export function LaunchRoastApp() {
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
               Product preview
             </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
-              A report that feels more like product review than generated filler
-            </h2>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
+                A report that feels more like product review than generated filler
+              </h2>
             <p className="mt-4 text-base leading-7 text-slate-400">
               Clear structure, minimal noise, and enough editorial guidance to
               make the next rewrite pass obvious.
@@ -568,7 +592,7 @@ export function LaunchRoastApp() {
 
       <SectionDivider />
 
-      <section className="px-4 py-14 sm:px-6 sm:py-16">
+      <section id="report-section" className="px-4 py-14 sm:px-6 sm:py-16">
         <div className="mx-auto max-w-7xl">
           <div className="no-print border-b border-white/8 pb-6">
             <div>
@@ -579,8 +603,8 @@ export function LaunchRoastApp() {
                 Your landing page report
               </h2>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400">
-                Messaging, conversion friction, and trust signals arranged in a
-                cleaner report view.
+                Launch readiness, message quality, live status, and trust
+                signals arranged in a cleaner report view.
               </p>
             </div>
           </div>
@@ -599,8 +623,8 @@ export function LaunchRoastApp() {
                 </h3>
                 <p className="mt-4 text-sm leading-7 text-slate-400">
                   Paste a homepage or draft and we will turn it into a structured
-                  review with rewrites, trust-signal feedback, and final copy you
-                  can actually ship from.
+                  review with rewrites, trust-signal feedback, website status
+                  details for live URLs, and final copy you can actually ship from.
                 </p>
               </div>
             </div>
@@ -626,7 +650,7 @@ export function LaunchRoastApp() {
                       Your landing page report
                     </h3>
                     <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-                      Messaging, CTA friction, offer clarity, and trust signals arranged in one export-ready report.
+                      Messaging, CTA friction, offer clarity, live status, and trust signals arranged in one export-ready report.
                     </p>
                     {copyStatusMessage ? (
                       <p className="no-print mt-3 text-sm text-slate-300">{copyStatusMessage}</p>
@@ -661,6 +685,13 @@ export function LaunchRoastApp() {
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-2">
+                  {result.websiteStatus ? (
+                    <WebsiteStatusCard
+                      status={result.websiteStatus}
+                      isCopied={copiedField === "Website status"}
+                      onCopy={() => copyValue("Website status", formatWebsiteStatus(result.websiteStatus!))}
+                    />
+                  ) : null}
                   <ReportCard
                     title="Main issue"
                     value={result.mainProblem}
@@ -680,10 +711,10 @@ export function LaunchRoastApp() {
                     onCopy={() => copyValue("CTA rewrite", result.ctaRewrite)}
                   />
                   <ReportCard
-                    title="Pricing feedback"
+                    title="Offer feedback"
                     value={result.pricingFeedback}
-                    isCopied={copiedField === "Pricing feedback"}
-                    onCopy={() => copyValue("Pricing feedback", result.pricingFeedback)}
+                    isCopied={copiedField === "Offer feedback"}
+                    onCopy={() => copyValue("Offer feedback", result.pricingFeedback)}
                   />
                   <TrustReviewCard
                     review={result.trustSafetyReview}
@@ -746,52 +777,15 @@ export function LaunchRoastApp() {
         </div>
       </section>
 
-      <SectionDivider />
-
-      <section id="support" className="px-4 py-14 sm:px-6 sm:py-16">
-        <div className="mx-auto max-w-7xl">
-          <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] p-6 shadow-[0_22px_64px_rgba(4,8,24,0.24)] sm:p-8">
-            <div className="max-w-3xl">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                Built by a student developer
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
-                Free to use, optional to support
-              </h2>
-              <p className="mt-4 text-base leading-7 text-slate-400">
-                LaunchRoast AI is a small free tool built to help founders, students, and indie builders tighten their landing pages before sharing them with the world. If it saves you time, you can optionally support the project.
-              </p>
-            </div>
-
-            <div className="mt-8 flex flex-col gap-4 rounded-[22px] border border-white/8 bg-[#0b1020]/74 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium text-white">Support the project</p>
-                <p className="mt-2 text-sm leading-7 text-slate-400">
-                  Support is handled with an external link only. LaunchRoast AI does not collect payment details in the app.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={openSupportLink}
-                disabled={!supportUrl}
-                className="inline-flex items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,#7d8dff_0%,#6d74ff_100%)] px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_42px_rgba(83,93,255,0.28)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_rgba(83,93,255,0.34)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
-              >
-                {supportUrl ? "Buy me a coffee" : "Support link coming soon"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <footer className="px-4 pb-10 pt-2 sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 border-t border-white/8 py-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-xl">
             <p className="leading-7">
-              LaunchRoast AI helps teams tighten landing page messaging before they
-              spend more on design, traffic, or another vague rewrite pass.
+              LaunchRoast AI helps people check whether a website is live,
+              understandable, trustworthy, and ready to share.
             </p>
             <p className="mt-2 text-sm text-slate-500">
-              Contact placeholder: support@launchroast.ai
+              Free tool. Contact placeholder: support@launchroast.ai
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -800,9 +794,6 @@ export function LaunchRoastApp() {
             </a>
             <a href="#results" className="transition hover:text-white">
               Report
-            </a>
-            <a href="#support" className="transition hover:text-white">
-              Support
             </a>
             <Link href="/privacy" className="transition hover:text-white">
               Privacy
@@ -835,7 +826,6 @@ function SiteHeader({ usageLabel }: { usageLabel: string }) {
         <div className="hidden items-center gap-1 md:flex">
           <HeaderLink href="#preview" label="Preview" />
           <HeaderLink href="#results" label="Report" />
-          <HeaderLink href="#support" label="Support" />
           <HeaderRoute href="/privacy" label="Privacy" />
           <HeaderRoute href="/terms" label="Terms" />
         </div>
@@ -960,8 +950,9 @@ function ProductPreview({
           <div className="mt-4 space-y-4">
             <SidebarStat label="Main issue" value="Outcome too soft above the fold" />
             <SidebarStat label="Offer" value="Context appears too late" />
+            <SidebarStat label="Status" value="Live URL is reachable and ready to share" />
             <SidebarStat label="Trust" value="Legal and contact cues need stronger visibility" />
-            <SidebarStat label="Launch readiness" value="Close, but still leaking confidence" />
+            <SidebarStat label="Launch readiness" value="Close, but still needs one sharper pass" />
           </div>
         </aside>
       </div>
@@ -1147,11 +1138,103 @@ function TrustReviewCard({
   );
 }
 
+function WebsiteStatusCard({
+  status,
+  isCopied,
+  onCopy,
+}: {
+  status: WebsiteStatus;
+  isCopied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <section className="print-card rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] p-5 xl:col-span-2">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold tracking-[-0.02em] text-white">
+            Website Status
+          </h3>
+          <p className="mt-1 text-sm text-slate-400">
+            Passive reachability and launch-state signals for the submitted live URL.
+          </p>
+        </div>
+        <CopyButton isCopied={isCopied} onCopy={onCopy} />
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatusPill
+          label="Availability"
+          value={status.isOnline ? "Online" : "Down"}
+          tone={status.isOnline ? "positive" : "neutral"}
+        />
+        <StatusPill
+          label="HTTP status"
+          value={status.statusCode ? `${status.statusCode}${status.statusText ? ` ${status.statusText}` : ""}` : "Unavailable"}
+        />
+        <StatusPill
+          label="Response time"
+          value={status.responseTimeMs ? `${status.responseTimeMs}ms` : "Unavailable"}
+        />
+        <StatusPill label="HTTPS" value={status.usesHttps ? "Yes" : "No"} />
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <TrustField
+          label="Redirected"
+          value={
+            status.redirected
+              ? `Yes${typeof status.redirectCount === "number" ? `, ${status.redirectCount} hop${status.redirectCount === 1 ? "" : "s"}` : ""}`
+              : "No redirect was needed."
+          }
+        />
+        <TrustField
+          label="Final URL"
+          value={status.finalUrl ?? status.inputUrl}
+        />
+      </div>
+
+      {status.error ? (
+        <div className="mt-4 rounded-[18px] border border-white/8 bg-[#0b1020]/74 p-4">
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Status note</p>
+          <p className="mt-3 text-sm leading-7 text-slate-300">{status.error}</p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function TrustField({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[18px] border border-white/8 bg-[#0b1020]/74 p-4">
       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <p className="mt-3 text-sm leading-7 text-slate-300">{value}</p>
+    </div>
+  );
+}
+
+function StatusPill({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "positive" | "neutral";
+}) {
+  return (
+    <div className="rounded-[18px] border border-white/8 bg-[#0b1020]/74 p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p
+        className={`mt-3 text-sm font-medium ${
+          tone === "positive"
+            ? "text-emerald-300"
+            : tone === "neutral"
+              ? "text-slate-200"
+              : "text-white"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

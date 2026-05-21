@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s | LaunchRoast AI",
   },
   description:
-    "Roast your landing page before customers do. LaunchRoast AI reviews clarity, CTA strength, offer friction, and trust signals in minutes.",
+    "Check if your website is ready to launch. LaunchRoast AI reviews clarity, trust signals, launch readiness, and live website status for public URLs.",
   applicationName: "LaunchRoast AI",
   category: "business",
   keywords: [
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "LaunchRoast AI",
     description:
-      "Paste a homepage or draft copy and get a structured review of clarity, CTA strength, offer friction, and trust signals.",
+      "Paste a live URL or draft copy and get an AI roast, launch-readiness report, trust-signal review, and live website status check.",
     url: "https://launchroast.ai",
     siteName: "LaunchRoast AI",
     locale: "en_US",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "LaunchRoast AI",
     description:
-      "Audit your landing page for clarity, conversion, offer friction, and trust before users bounce.",
+      "Check whether your website is live, clear, trustworthy, and ready to share.",
   },
 };
 

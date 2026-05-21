@@ -15,6 +15,20 @@ export type TrustSafetyReview = {
   recommendedFixes: string[];
 };
 
+export type WebsiteStatus = {
+  checked: boolean;
+  inputUrl: string;
+  finalUrl?: string;
+  isOnline: boolean;
+  statusCode?: number;
+  statusText?: string;
+  responseTimeMs?: number;
+  redirected: boolean;
+  redirectCount?: number;
+  usesHttps: boolean;
+  error?: string;
+};
+
 export type AuditResult = {
   clarityScore: number;
   mainProblem: string;
@@ -24,6 +38,7 @@ export type AuditResult = {
   trustSuggestions: string;
   finalLandingCopy: string;
   trustSafetyReview: TrustSafetyReview;
+  websiteStatus?: WebsiteStatus;
 };
 
 export type AuditResponseBody = {

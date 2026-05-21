@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { LaunchRoastApp } from "@/components/launchroast-app";
 
 export const metadata: Metadata = {
-  title: "Landing Page Audit Tool",
+  title: "Website Launch Readiness Checker",
   description:
-    "Paste your landing page URL or copy and get a structured roast with clearer messaging, CTA rewrites, offer feedback, and trust suggestions.",
+    "Paste your website URL or draft copy and get a structured roast with launch-readiness feedback, trust suggestions, and a live status check for public URLs.",
 };
 
 export default function HomePage() {

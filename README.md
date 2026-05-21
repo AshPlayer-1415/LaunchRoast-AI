@@ -1,6 +1,6 @@
 # LaunchRoast AI
 
-LaunchRoast AI is a Next.js landing page audit app built as a free tool for founders, students, and indie builders. Users can paste a landing page URL or draft copy, generate a structured roast, and export the result as a PDF using browser print.
+LaunchRoast AI is a free AI-powered website launch readiness checker built with Next.js. Paste a live public URL or draft copy to get a structured roast, launch-readiness report, trust-signal review, and a passive website status check for live URLs.
 
 ## Stack
 
@@ -9,6 +9,7 @@ LaunchRoast AI is a Next.js landing page audit app built as a free tool for foun
 - Tailwind CSS
 - Local usage tracking with `localStorage`
 - OpenRouter-ready API route with mock fallback
+- Passive website status checker for public URLs
 
 ## Local setup
 
@@ -24,13 +25,16 @@ npm install
 cp .env.example .env.local
 ```
 
-3. Add your optional OpenRouter key to `.env.local`:
+3. Add your optional OpenRouter settings:
 
 ```bash
 OPENROUTER_API_KEY=your_key_here
+OPENROUTER_MODEL=openrouter/free
 ```
 
-If `OPENROUTER_API_KEY` is empty, the app will fall back to a local mock audit response.
+`OPENROUTER_MODEL` is optional and defaults to `openrouter/free`.
+
+If `OPENROUTER_API_KEY` is empty, the app falls back to a local mock audit response.
 
 4. Start the dev server:
 
@@ -38,7 +42,7 @@ If `OPENROUTER_API_KEY` is empty, the app will fall back to a local mock audit r
 npm run dev
 ```
 
-5. Open your local app at `http://localhost:3000`.
+5. Open the app at `http://localhost:3000`.
 
 ## Scripts
 
@@ -47,9 +51,11 @@ npm run dev
 - `npm run build` creates a production build
 - `npm run check` runs lint and build together
 
-## API route
+## API routes
 
-The app exposes `POST /api/audit` with this request shape:
+### `POST /api/audit`
+
+Request body:
 
 ```json
 {
@@ -67,7 +73,7 @@ Successful responses return:
     "mainProblem": "The hero is too vague.",
     "headlineRewrite": "Clearer headline here",
     "ctaRewrite": "Sharper CTA here",
-    "pricingFeedback": "Pricing feedback here",
+    "pricingFeedback": "Offer feedback here",
     "trustSuggestions": "Trust suggestion one\nTrust suggestion two",
     "finalLandingCopy": "Improved copy here",
     "trustSafetyReview": {
@@ -78,25 +84,66 @@ Successful responses return:
       "dataHandlingFeedback": "Data handling feedback here",
       "securityClaimsFeedback": "Security claims feedback here",
       "recommendedFixes": ["Fix one", "Fix two"]
+    },
+    "websiteStatus": {
+      "checked": true,
+      "inputUrl": "https://example.com",
+      "finalUrl": "https://www.example.com",
+      "isOnline": true,
+      "statusCode": 200,
+      "statusText": "OK",
+      "responseTimeMs": 412,
+      "redirected": true,
+      "redirectCount": 1,
+      "usesHttps": true
     }
   },
-  "source": "openrouter"
+  "source": "openrouter",
+  "model": "openrouter/free"
 }
 ```
 
-The app also exposes:
+### `GET /api/health`
 
-- `GET /api/health` for a simple deployment health check
-- `POST /api/audit` for landing page audits
+Returns:
+
+```json
+{
+  "status": "ok",
+  "app": "LaunchRoast AI",
+  "timestamp": "2026-05-21T00:00:00.000Z"
+}
+```
+
+## Website status checker
+
+For `inputType: "url"`, the backend runs a passive status check before or during the audit.
+
+It checks:
+
+- whether the public URL is reachable
+- the final HTTP status
+- total response time
+- whether HTTPS is used
+- whether redirects happened
+- the final resolved URL when redirected
+
+It does not:
+
+- scan ports
+- test vulnerabilities
+- probe admin paths
+- attempt SQL injection or XSS payloads
+- interact with login forms
+
+Localhost, private IPs, and internal network destinations are blocked for safety.
 
 ## Environment variables
 
-Documented variables:
-
 - `OPENROUTER_API_KEY`
-  Optional. If set, LaunchRoast AI will request live audit output from OpenRouter. If omitted, the app falls back to a local mock audit response.
-- `NEXT_PUBLIC_SUPPORT_URL`
-  Optional. If set, the support button opens this external link in a new tab with `noopener,noreferrer`. If omitted, the button falls back to a disabled "Support link coming soon" state.
+  Optional. Enables live AI roasts through OpenRouter. Without it, the app runs in mock fallback mode.
+- `OPENROUTER_MODEL`
+  Optional. Defaults to `openrouter/free` when unset.
 
 Recommended local file:
 
@@ -104,18 +151,12 @@ Recommended local file:
 cp .env.example .env.local
 ```
 
-Vercel environment:
-
-- Add `OPENROUTER_API_KEY` in Project Settings → Environment Variables
-- Add `NEXT_PUBLIC_SUPPORT_URL` if you want the support button to open an external support page
-- Redeploy after changing environment variables
-
 ## Vercel deployment
 
 1. Push the project to GitHub.
 2. Import the repo into Vercel.
-3. Add `OPENROUTER_API_KEY` in Vercel if you want live AI audits.
-4. Add `NEXT_PUBLIC_SUPPORT_URL` if you want the optional support button to open a hosted page.
+3. Add `OPENROUTER_API_KEY` if you want live AI roasts.
+4. Optionally add `OPENROUTER_MODEL` if you want a different OpenRouter model.
 5. Deploy with the default Next.js build settings.
 
 This app is already structured for Vercel:
@@ -125,17 +166,16 @@ This app is already structured for Vercel:
 - no authentication setup is required
 - no API keys are exposed client-side
 - analytics placeholders stay silent in production
-- `robots.txt`, `sitemap.xml`, and `/api/health` are included
-- optional support uses a simple hosted link only; no card data is collected in this app
+- `robots.txt`, `sitemap.xml`, `/api/health`, and `/api/audit` are included
 
 ## Deployment notes
 
-- Set `OPENROUTER_API_KEY` in your deployment environment if you want live AI audits.
-- Set `NEXT_PUBLIC_SUPPORT_URL` if you want the support button to open a hosted support page.
+- Set `OPENROUTER_API_KEY` if you want live AI audits in production.
+- Leave `OPENROUTER_MODEL` unset to use `openrouter/free`, or provide a different OpenRouter model name.
+- The audit route falls back cleanly when the AI key is missing or the live AI call fails.
 - The route blocks localhost and private-network URL fetching for safer deployment defaults.
 - Placeholder analytics are wired through a small local abstraction and do not connect to any paid service yet.
-- The support link opens in a new tab. If a link is not configured, the UI falls back to a disabled "Support link coming soon" state.
-- Metadata is configured for a production deployment under `https://launchroast.ai`.
+- Metadata is configured for deployment under `https://launchroast.ai`.
 - If you deploy to a different domain, update `metadataBase`, sitemap, and robots host values.
 - Placeholder contact email: `support@launchroast.ai`
 
@@ -144,5 +184,4 @@ This app is already structured for Vercel:
 - Replace placeholder legal copy in `/privacy` and `/terms`
 - Replace `support@launchroast.ai` with a real support email
 - Swap the analytics placeholder in `lib/analytics.ts`
-- Add a real hosted support link if you want optional project support enabled
 - Set the production site URL if you deploy on a domain other than `launchroast.ai`
