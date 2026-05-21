@@ -2,6 +2,8 @@
 
 LaunchRoast AI is a free AI-powered website launch readiness checker built with Next.js. Paste a live public URL or draft copy to get a structured roast, launch-readiness report, trust-signal review, and a passive website status check for live URLs.
 
+Built with Codex 5.4 in roughly 2 to 3 hours.
+
 ## Stack
 
 - Next.js App Router
