@@ -177,11 +177,11 @@ This app is already structured for Vercel:
 - Placeholder analytics are wired through a small local abstraction and do not connect to any paid service yet.
 - Metadata is configured for deployment under `https://launchroast.ai`.
 - If you deploy to a different domain, update `metadataBase`, sitemap, and robots host values.
-- Placeholder contact email: `support@launchroast.ai`
+- Add a real support contact before launch.
 
 ## Production checklist
 
 - Replace placeholder legal copy in `/privacy` and `/terms`
-- Replace `support@launchroast.ai` with a real support email
+- Add a public support contact before launch
 - Swap the analytics placeholder in `lib/analytics.ts`
 - Set the production site URL if you deploy on a domain other than `launchroast.ai`

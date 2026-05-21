@@ -34,7 +34,7 @@ export default function PrivacyPage() {
         {
           heading: "Contact",
           body:
-            "For now, use the placeholder contact email support@launchroast.ai until a real support address is ready. Replace it before launch so visitors have a clear path for deletion requests, policy questions, or data handling concerns.",
+            "Publish a clear support contact before launch so visitors have a reliable path for deletion requests, policy questions, or data handling concerns.",
         },
       ]}
     />

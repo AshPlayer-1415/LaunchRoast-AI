@@ -39,7 +39,7 @@ export default function TermsPage() {
         {
           heading: "Contact",
           body:
-            "For now, use the placeholder contact email support@launchroast.ai until a real support address is available. Replace it before launch so users have a clear support path.",
+            "Publish a clear support contact before launch so users have a reliable path for questions about acceptable use, policies, or service expectations.",
         },
       ]}
     />

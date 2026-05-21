@@ -854,7 +854,8 @@ export function LaunchRoastApp() {
               homepages, and draft copy that need a clearer pre-launch pass.
             </p>
             <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-              Free tool. Contact placeholder: support@launchroast.ai
+              Free tool. Built for clearer launches, faster reviews, and calmer
+              pre-share checks.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -900,7 +901,7 @@ function SiteHeader({
       >
         <div className="top-nav-inner">
           <Link href="/" className="flex items-center gap-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-none border border-[color:var(--line)] bg-[rgba(255,255,255,0.025)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--line)] bg-[rgba(255,255,255,0.03)] shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]">
               <span className="mono-label text-[10px] text-[color:var(--text)]">LR</span>
             </div>
             <div>
