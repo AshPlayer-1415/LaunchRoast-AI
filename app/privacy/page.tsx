@@ -4,7 +4,7 @@ import { LegalPageShell } from "@/components/legal-page-shell";
 export const metadata: Metadata = {
   title: "Privacy",
   description:
-    "Read how LaunchRoast AI handles audit requests, local usage tracking, and placeholder third-party integrations.",
+    "Read how LaunchRoast AI handles audit requests, local usage tracking, and optional third-party support links.",
 };
 
 export default function PrivacyPage() {
@@ -12,14 +12,14 @@ export default function PrivacyPage() {
     <LegalPageShell
       eyebrow="Policy"
       title="Privacy"
-      intro="LaunchRoast AI keeps the current product intentionally simple. The notes below explain how request handling and local usage tracking work in this version."
+      intro="LaunchRoast AI keeps the current product intentionally simple. The notes below explain how request handling, local usage tracking, and optional support links work in this version."
       alternateHref="/terms"
       alternateLabel="Terms"
       sections={[
         {
           heading: "What we store",
           body:
-            "We store a small audit usage counter in localStorage so the free limit can work without authentication. Submitted landing page URLs or copy are processed for the current audit request, and a fuller production policy should describe logging, retention, and processor details more explicitly before launch.",
+            "We store a small audit usage counter in localStorage for basic product feedback and a lighter repeat-use experience. Submitted landing page URLs or copy are processed for the current audit request, and a fuller production policy should describe logging, retention, and processor details more explicitly before launch.",
         },
         {
           heading: "How audit requests are handled",
@@ -27,9 +27,9 @@ export default function PrivacyPage() {
             "Audit requests are sent to the app server route. If OPENROUTER_API_KEY is configured, the request may be forwarded to OpenRouter for live AI analysis. If no API key is configured, the app falls back to a local mock response instead of failing the request.",
         },
         {
-          heading: "Payments",
+          heading: "Optional support",
           body:
-            "Pricing and upgrade flows are placeholders in this version. No live billing or payment processing is implemented yet.",
+            "The app does not collect card details or process payments directly. If a support link is configured, it opens an external page so visitors can optionally support the project outside the app.",
         },
         {
           heading: "Contact",

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s | LaunchRoast AI",
   },
   description:
-    "Fix your landing page before users bounce. LaunchRoast AI audits your messaging, CTA, pricing, and trust signals in minutes.",
+    "Roast your landing page before customers do. LaunchRoast AI reviews clarity, CTA strength, offer friction, and trust signals in minutes.",
   applicationName: "LaunchRoast AI",
   category: "business",
   keywords: [
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "LaunchRoast AI",
     description:
-      "Paste your startup page and get a clarity score, CTA rewrite, pricing feedback, and stronger landing page copy.",
+      "Paste a homepage or draft copy and get a structured review of clarity, CTA strength, offer friction, and trust signals.",
     url: "https://launchroast.ai",
     siteName: "LaunchRoast AI",
     locale: "en_US",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "LaunchRoast AI",
     description:
-      "Audit your landing page for clarity, conversion, pricing, and trust before users bounce.",
+      "Audit your landing page for clarity, conversion, offer friction, and trust before users bounce.",
   },
 };
 

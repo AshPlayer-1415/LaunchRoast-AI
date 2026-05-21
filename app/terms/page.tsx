@@ -4,7 +4,7 @@ import { LegalPageShell } from "@/components/legal-page-shell";
 export const metadata: Metadata = {
   title: "Terms",
   description:
-    "Review the placeholder terms for using LaunchRoast AI before launch and before live billing is enabled.",
+    "Review the placeholder terms for using LaunchRoast AI during this early free version.",
 };
 
 export default function TermsPage() {
@@ -12,7 +12,7 @@ export default function TermsPage() {
     <LegalPageShell
       eyebrow="Policy"
       title="Terms"
-      intro="These terms are still simple placeholder copy for the current product stage. Replace them with reviewed legal language before you add live billing, user accounts, or enterprise commitments."
+      intro="These terms are still simple placeholder copy for the current product stage. Replace them with reviewed legal language before you add user accounts, enterprise commitments, or any formal commercial offering."
       alternateHref="/privacy"
       alternateLabel="Privacy"
       sections={[
@@ -32,9 +32,9 @@ export default function TermsPage() {
             "The product may rely on third-party AI providers and public web fetching. Availability, latency, and output quality can vary based on those dependencies.",
         },
         {
-          heading: "Billing",
+          heading: "Optional support",
           body:
-            "Pricing shown in the current product is illustrative until a real checkout flow is implemented and documented.",
+            "LaunchRoast AI is free to use in this early version. If an external support link is added, any optional support happens off-site and is not processed inside the app.",
         },
         {
           heading: "Contact",

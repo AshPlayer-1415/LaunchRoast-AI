@@ -12,11 +12,7 @@ import {
   type TrustSafetyReview,
 } from "@/lib/audit";
 import { trackEvent } from "@/lib/analytics";
-import {
-  FREE_AUDIT_LIMIT,
-  getStoredAuditCount,
-  incrementStoredAuditCount,
-} from "@/lib/storage";
+import { getStoredAuditCount, incrementStoredAuditCount } from "@/lib/storage";
 
 const tabOptions: { id: AuditInputType; label: string; helper: string }[] = [
   {
@@ -35,7 +31,7 @@ const tabOptions: { id: AuditInputType; label: string; helper: string }[] = [
 
 const productSignals = [
   "Clarity score with concise buyer-focused feedback",
-  "Headline, CTA, and pricing rewrites that feel product-aware",
+  "Headline, CTA, and offer feedback that feel product-aware",
   "Trust-signal review without invasive or scanner-like behavior",
 ];
 
@@ -46,9 +42,9 @@ const whoItsFor = [
       "Use it to tighten the homepage before early users, investors, or beta traffic form the wrong impression.",
   },
   {
-    title: "Marketers iterating fast",
+    title: "Students and indie builders",
     description:
-      "Use it when you want sharper positioning, CTA language, and clearer pricing context between experiments.",
+      "Use it when you want sharper positioning, CTA language, and cleaner launch copy before sharing the product publicly.",
   },
   {
     title: "Product teams rewriting copy",
@@ -82,44 +78,14 @@ const faqs = [
       "Yes. Switch to the draft copy tab and paste your headline, subheadline, CTA, proof, and pricing copy.",
   },
   {
-    question: "Is the first audit free?",
+    question: "Is the tool free?",
     answer:
-      "Yes. The first audit is free and tracked locally in your browser.",
+      "Yes. LaunchRoast AI is free during this early version. Optional support helps keep it running.",
   },
   {
     question: "Do I need an account?",
     answer:
       "No. The current version does not require an account or authentication.",
-  },
-];
-
-const pricingTiers = [
-  {
-    name: "Free",
-    price: "1 audit",
-    description: "Try one full roast",
-    subcopy: "A complete review of messaging, CTA strength, pricing friction, and trust signals.",
-    cta: "Start free",
-    featured: false,
-    plan: "free" as const,
-  },
-  {
-    name: "Starter",
-    price: "$9 for 5 audits",
-    description: "5 focused audits for rewrite sprints",
-    subcopy: "Ideal for founders and marketers testing a few headline and offer directions quickly.",
-    cta: "Choose Starter",
-    featured: true,
-    plan: "starter" as const,
-  },
-  {
-    name: "Pro",
-    price: "$12/month",
-    description: "Ongoing audits for teams and marketers",
-    subcopy: "Designed for regular homepage iteration across launches, campaigns, and positioning updates.",
-    cta: "Choose Pro",
-    featured: false,
-    plan: "pro" as const,
   },
 ];
 
@@ -177,18 +143,16 @@ export function LaunchRoastApp() {
   const [mode, setMode] = useState<AuditInputType>("url");
   const [input, setInput] = useState("");
   const [auditCount, setAuditCount] = useState(0);
-  const [hasLoadedAuditCount, setHasLoadedAuditCount] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
-  const [showPaywall, setShowPaywall] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [copyStatusMessage, setCopyStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [isPrintingReport, setIsPrintingReport] = useState(false);
 
   useEffect(() => {
     setAuditCount(getStoredAuditCount());
-    setHasLoadedAuditCount(true);
   }, []);
 
   useEffect(() => {
@@ -215,35 +179,6 @@ export function LaunchRoastApp() {
     return () => window.clearTimeout(timeout);
   }, [copyStatusMessage]);
 
-  useEffect(() => {
-    if (showPaywall) {
-      trackEvent("paywall_viewed", { auditCount });
-    }
-  }, [auditCount, showPaywall]);
-
-  useEffect(() => {
-    if (!showPaywall) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setShowPaywall(false);
-      }
-    }
-
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [showPaywall]);
-
-  const freeAuditsRemaining = Math.max(FREE_AUDIT_LIMIT - auditCount, 0);
   const trimmedInput = input.trim();
   const canRunAudit = useMemo(() => trimmedInput.length > 6, [trimmedInput]);
 
@@ -256,10 +191,6 @@ export function LaunchRoastApp() {
   }, [mode, trimmedInput]);
 
   const validationMessage = useMemo(() => {
-    if (!hasLoadedAuditCount) {
-      return "Checking your free audit availability.";
-    }
-
     if (trimmedInput.length === 0) {
       return mode === "url"
         ? "Paste a homepage URL to start the review."
@@ -273,38 +204,33 @@ export function LaunchRoastApp() {
     }
 
     return null;
-  }, [hasLoadedAuditCount, mode, trimmedInput]);
+  }, [mode, trimmedInput]);
 
   const usageLabel =
-    !hasLoadedAuditCount
-      ? "Checking free audit usage"
-      : freeAuditsRemaining > 0
-        ? `${freeAuditsRemaining} free audit remaining`
-        : "Free audit used";
+    auditCount > 0
+      ? `${auditCount} ${auditCount === 1 ? "roast" : "roasts"} run in this browser`
+      : "Free tool";
 
-  const isAuditDisabled = !hasLoadedAuditCount || !canRunAudit || isLoading;
+  const isAuditDisabled = !canRunAudit || isLoading;
 
   const ctaStrengthScore = result ? getCtaStrengthScore(result) : 84;
   const trustScore = result?.trustSafetyReview.trustScore ?? 78;
   const clarityScore = result?.clarityScore ?? 81;
-  const starterPaymentUrl = process.env.NEXT_PUBLIC_STARTER_PAYMENT_URL?.trim() ?? "";
-  const proPaymentUrl = process.env.NEXT_PUBLIC_PRO_PAYMENT_URL?.trim() ?? "";
+  const supportUrl = process.env.NEXT_PUBLIC_SUPPORT_URL?.trim() ?? "";
 
-  function openPaymentLink(url: string, plan: "starter" | "pro") {
-    trackEvent("upgrade_clicked", {
-      location: showPaywall ? "paywall_modal" : "pricing_section",
-      plan,
+  function openSupportLink() {
+    if (!supportUrl) {
+      return;
+    }
+
+    trackEvent("support_clicked", {
+      location: "support_section",
     });
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(supportUrl, "_blank", "noopener,noreferrer");
   }
 
   async function handleAudit() {
     if (!canRunAudit) {
-      return;
-    }
-
-    if (auditCount >= FREE_AUDIT_LIMIT) {
-      setShowPaywall(true);
       return;
     }
 
@@ -346,7 +272,6 @@ export function LaunchRoastApp() {
 
       const nextCount = incrementStoredAuditCount();
       setAuditCount(nextCount);
-      setShowPaywall(nextCount >= FREE_AUDIT_LIMIT);
       document.getElementById("results")?.scrollIntoView({
         behavior: "smooth",
         block: "start",
@@ -371,9 +296,36 @@ export function LaunchRoastApp() {
     }
   }
 
+  function handleExportReport() {
+    if (!result || isPrintingReport) {
+      return;
+    }
+
+    const body = document.body;
+    const cleanup = () => {
+      body.classList.remove("printing-report");
+      setIsPrintingReport(false);
+    };
+
+    setIsPrintingReport(true);
+    body.classList.add("printing-report");
+
+    const fallbackTimeout = window.setTimeout(cleanup, 2000);
+
+    const handleAfterPrint = () => {
+      window.clearTimeout(fallbackTimeout);
+      cleanup();
+    };
+
+    window.addEventListener("afterprint", handleAfterPrint, { once: true });
+    window.setTimeout(() => {
+      window.print();
+    }, 60);
+  }
+
   return (
     <main className="relative overflow-hidden">
-      <SiteHeader usageLabel={usageLabel} freeAuditsRemaining={freeAuditsRemaining} />
+      <SiteHeader usageLabel={usageLabel} />
 
       <section className="px-4 pb-14 pt-6 sm:px-6 sm:pb-16 sm:pt-8">
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start">
@@ -389,7 +341,7 @@ export function LaunchRoastApp() {
 
             <p className="mt-5 max-w-xl text-[1.02rem] leading-8 text-slate-300">
               Paste a homepage or draft copy and get a structured review of
-              clarity, CTA strength, pricing friction, trust signals, and launch
+              clarity, CTA strength, offer friction, trust signals, and launch
               readiness.
             </p>
 
@@ -490,7 +442,7 @@ export function LaunchRoastApp() {
                   <p className="text-sm text-slate-500">
                     {inlineUrlWarning ??
                       validationMessage ??
-                      "The route supports OpenRouter when configured and falls back gracefully when it is not."}
+                      "Live AI is used when available. A local fallback keeps the tool usable either way."}
                   </p>
                 </div>
 
@@ -514,7 +466,7 @@ export function LaunchRoastApp() {
                 </div>
 
                 <div className="mt-5 flex items-center justify-between border-t border-white/8 pt-4 text-xs text-slate-500">
-                  <span>OpenRouter-compatible route</span>
+                  <span>Free early tool</span>
                   <span>PDF export included</span>
                 </div>
               </div>
@@ -525,7 +477,7 @@ export function LaunchRoastApp() {
 
       <SectionDivider />
 
-      <section className="px-4 py-14 sm:px-6 sm:py-16">
+      <section id="report-section" className="px-4 py-14 sm:px-6 sm:py-16">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
@@ -618,7 +570,7 @@ export function LaunchRoastApp() {
 
       <section className="px-4 py-14 sm:px-6 sm:py-16">
         <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col gap-4 border-b border-white/8 pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="no-print border-b border-white/8 pb-6">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
                 Audit report
@@ -630,18 +582,7 @@ export function LaunchRoastApp() {
                 Messaging, conversion friction, and trust signals arranged in a
                 cleaner report view.
               </p>
-              {copyStatusMessage ? (
-                <p className="mt-3 text-sm text-slate-300">{copyStatusMessage}</p>
-              ) : null}
             </div>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              disabled={!result}
-              className="no-print inline-flex items-center justify-center rounded-[14px] border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-slate-300 transition duration-200 hover:border-white/16 hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Export as PDF
-            </button>
           </div>
 
           {!result && !isLoading ? (
@@ -654,7 +595,7 @@ export function LaunchRoastApp() {
                   LR
                 </div>
                 <h3 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
-                  Your report appears here after the first roast
+                  Your report appears here after you run an audit
                 </h3>
                 <p className="mt-4 text-sm leading-7 text-slate-400">
                   Paste a homepage or draft and we will turn it into a structured
@@ -668,74 +609,107 @@ export function LaunchRoastApp() {
           {isLoading ? <LoadingReport /> : null}
 
           {result && !isLoading ? (
-            <div id="results" className="print-surface mt-8 space-y-6">
-              <div className="grid gap-4 lg:grid-cols-3">
-                <MetricCard
-                  label="Clarity score"
-                  score={result.clarityScore}
-                  description={getScoreSummary(result.clarityScore)}
-                />
-                <MetricCard
-                  label="Trust score"
-                  score={result.trustSafetyReview.trustScore}
-                  description="A passive read of trust signals and basic safety signals."
-                />
-                <MetricCard
-                  label="CTA strength"
-                  score={getCtaStrengthScore(result)}
-                  description="A quick read on action clarity, specificity, and momentum."
+            <div
+              id="results"
+              className="print-surface mt-8 rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] p-5 shadow-[0_24px_70px_rgba(4,8,24,0.28)] sm:p-6"
+            >
+              <div
+                id="audit-report-export"
+                className="space-y-6"
+              >
+                <div className="flex flex-col gap-4 border-b border-white/8 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
+                      Audit report
+                    </p>
+                    <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-[2rem]">
+                      Your landing page report
+                    </h3>
+                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+                      Messaging, CTA friction, offer clarity, and trust signals arranged in one export-ready report.
+                    </p>
+                    {copyStatusMessage ? (
+                      <p className="no-print mt-3 text-sm text-slate-300">{copyStatusMessage}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleExportReport}
+                    disabled={!result || isPrintingReport}
+                    className="no-print inline-flex items-center justify-center rounded-[14px] border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-slate-300 transition duration-200 hover:border-white/16 hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isPrintingReport ? "Preparing PDF" : "Export as PDF"}
+                  </button>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <MetricCard
+                    label="Clarity score"
+                    score={result.clarityScore}
+                    description={getScoreSummary(result.clarityScore)}
+                  />
+                  <MetricCard
+                    label="Trust score"
+                    score={result.trustSafetyReview.trustScore}
+                    description="A passive read of trust signals and basic safety signals."
+                  />
+                  <MetricCard
+                    label="CTA strength"
+                    score={getCtaStrengthScore(result)}
+                    description="A quick read on action clarity, specificity, and momentum."
+                  />
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <ReportCard
+                    title="Main issue"
+                    value={result.mainProblem}
+                    isCopied={copiedField === "Main issue"}
+                    onCopy={() => copyValue("Main issue", result.mainProblem)}
+                  />
+                  <ReportCard
+                    title="Headline rewrite"
+                    value={result.headlineRewrite}
+                    isCopied={copiedField === "Headline rewrite"}
+                    onCopy={() => copyValue("Headline rewrite", result.headlineRewrite)}
+                  />
+                  <ReportCard
+                    title="CTA rewrite"
+                    value={result.ctaRewrite}
+                    isCopied={copiedField === "CTA rewrite"}
+                    onCopy={() => copyValue("CTA rewrite", result.ctaRewrite)}
+                  />
+                  <ReportCard
+                    title="Pricing feedback"
+                    value={result.pricingFeedback}
+                    isCopied={copiedField === "Pricing feedback"}
+                    onCopy={() => copyValue("Pricing feedback", result.pricingFeedback)}
+                  />
+                  <TrustReviewCard
+                    review={result.trustSafetyReview}
+                    isCopied={copiedField === "Trust & Safety Roast"}
+                    onCopy={() =>
+                      copyValue(
+                        "Trust & Safety Roast",
+                        formatTrustSafetyReview(result.trustSafetyReview),
+                      )
+                    }
+                  />
+                  <ReportCard
+                    title="Trust suggestions"
+                    value={result.trustSuggestions}
+                    isCopied={copiedField === "Trust suggestions"}
+                    onCopy={() => copyValue("Trust suggestions", result.trustSuggestions)}
+                  />
+                </div>
+
+                <ReportCard
+                  title="Final copy"
+                  value={result.finalLandingCopy}
+                  isCopied={copiedField === "Final copy"}
+                  onCopy={() => copyValue("Final copy", result.finalLandingCopy)}
                 />
               </div>
-
-              <div className="grid gap-4 xl:grid-cols-2">
-                <ReportCard
-                  title="Main issue"
-                  value={result.mainProblem}
-                  isCopied={copiedField === "Main issue"}
-                  onCopy={() => copyValue("Main issue", result.mainProblem)}
-                />
-                <ReportCard
-                  title="Headline rewrite"
-                  value={result.headlineRewrite}
-                  isCopied={copiedField === "Headline rewrite"}
-                  onCopy={() => copyValue("Headline rewrite", result.headlineRewrite)}
-                />
-                <ReportCard
-                  title="CTA rewrite"
-                  value={result.ctaRewrite}
-                  isCopied={copiedField === "CTA rewrite"}
-                  onCopy={() => copyValue("CTA rewrite", result.ctaRewrite)}
-                />
-                <ReportCard
-                  title="Pricing feedback"
-                  value={result.pricingFeedback}
-                  isCopied={copiedField === "Pricing feedback"}
-                  onCopy={() => copyValue("Pricing feedback", result.pricingFeedback)}
-                />
-                <TrustReviewCard
-                  review={result.trustSafetyReview}
-                  isCopied={copiedField === "Trust & Safety Roast"}
-                  onCopy={() =>
-                    copyValue(
-                      "Trust & Safety Roast",
-                      formatTrustSafetyReview(result.trustSafetyReview),
-                    )
-                  }
-                />
-                <ReportCard
-                  title="Trust suggestions"
-                  value={result.trustSuggestions}
-                  isCopied={copiedField === "Trust suggestions"}
-                  onCopy={() => copyValue("Trust suggestions", result.trustSuggestions)}
-                />
-              </div>
-
-              <ReportCard
-                title="Final copy"
-                value={result.finalLandingCopy}
-                isCopied={copiedField === "Final copy"}
-                onCopy={() => copyValue("Final copy", result.finalLandingCopy)}
-              />
             </div>
           ) : null}
         </div>
@@ -774,38 +748,37 @@ export function LaunchRoastApp() {
 
       <SectionDivider />
 
-      <section id="pricing" className="px-4 py-14 sm:px-6 sm:py-16">
+      <section id="support" className="px-4 py-14 sm:px-6 sm:py-16">
         <div className="mx-auto max-w-7xl">
-          <div className="max-w-2xl">
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-              Pricing
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
-              Choose the pace that matches your rewrite cycle
-            </h2>
-            <p className="mt-4 text-base leading-7 text-slate-400">
-              Start with one complete review, then upgrade if you want faster
-              iteration across launches, campaigns, or positioning work.
-            </p>
-          </div>
+          <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] p-6 shadow-[0_22px_64px_rgba(4,8,24,0.24)] sm:p-8">
+            <div className="max-w-3xl">
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
+                Built by a student developer
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white sm:text-[2.15rem]">
+                Free to use, optional to support
+              </h2>
+              <p className="mt-4 text-base leading-7 text-slate-400">
+                LaunchRoast AI is a small free tool built to help founders, students, and indie builders tighten their landing pages before sharing them with the world. If it saves you time, you can optionally support the project.
+              </p>
+            </div>
 
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
-            {pricingTiers.map((tier) => (
-              <PricingCard
-                key={tier.name}
-                tier={tier}
-                starterPaymentUrl={starterPaymentUrl}
-                proPaymentUrl={proPaymentUrl}
-                onStartFree={() => {
-                  trackEvent("pricing_cta_clicked", { tier: tier.name });
-                  document.getElementById("audit-input")?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                }}
-                onOpenPaymentLink={openPaymentLink}
-              />
-            ))}
+            <div className="mt-8 flex flex-col gap-4 rounded-[22px] border border-white/8 bg-[#0b1020]/74 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-white">Support the project</p>
+                <p className="mt-2 text-sm leading-7 text-slate-400">
+                  Support is handled with an external link only. LaunchRoast AI does not collect payment details in the app.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={openSupportLink}
+                disabled={!supportUrl}
+                className="inline-flex items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,#7d8dff_0%,#6d74ff_100%)] px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_42px_rgba(83,93,255,0.28)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_rgba(83,93,255,0.34)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
+              >
+                {supportUrl ? "Buy me a coffee" : "Support link coming soon"}
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -828,8 +801,8 @@ export function LaunchRoastApp() {
             <a href="#results" className="transition hover:text-white">
               Report
             </a>
-            <a href="#pricing" className="transition hover:text-white">
-              Pricing
+            <a href="#support" className="transition hover:text-white">
+              Support
             </a>
             <Link href="/privacy" className="transition hover:text-white">
               Privacy
@@ -840,93 +813,11 @@ export function LaunchRoastApp() {
           </div>
         </div>
       </footer>
-
-      {showPaywall ? (
-        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-[rgba(3,6,18,0.72)] p-4 backdrop-blur-md sm:p-6">
-          <button
-            type="button"
-            aria-label="Close upgrade modal"
-            onClick={() => setShowPaywall(false)}
-            className="absolute inset-0 cursor-default"
-          />
-          <div
-            className="relative w-full max-w-xl rounded-[30px] border border-white/10 bg-[#090e1a]/96 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.38)] sm:p-7"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                  Free limit reached
-                </p>
-                <h3 className="mt-3 text-[1.9rem] font-semibold tracking-[-0.03em] text-white">
-                  Keep the review loop moving
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPaywall(false)}
-                className="rounded-[12px] border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-white/16 hover:text-white"
-              >
-                Close
-              </button>
-            </div>
-
-            <p className="mt-4 text-sm leading-7 text-slate-400">
-              Billing is still a placeholder, but this flow is ready to become a
-              clean upgrade path once you connect a checkout provider.
-            </p>
-
-            <div className="mt-6 grid gap-3">
-              <MiniPlan
-                name="Starter"
-                description="Five focused audits for rewrite sprints"
-                price="$9"
-                actionLabel={starterPaymentUrl ? "Open Starter payment link" : "Payment link coming soon"}
-                disabled={!starterPaymentUrl}
-                onClick={
-                  starterPaymentUrl
-                    ? () => openPaymentLink(starterPaymentUrl, "starter")
-                    : undefined
-                }
-              />
-              <MiniPlan
-                name="Pro"
-                description="Ongoing audits for teams and marketers"
-                price="$12/mo"
-                actionLabel={proPaymentUrl ? "Open Pro payment link" : "Payment link coming soon"}
-                disabled={!proPaymentUrl}
-                onClick={
-                  proPaymentUrl ? () => openPaymentLink(proPaymentUrl, "pro") : undefined
-                }
-              />
-            </div>
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => setShowPaywall(false)}
-                className="flex-1 rounded-[14px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-300 transition hover:border-white/16 hover:bg-white/[0.05] hover:text-white"
-              >
-                Keep exploring
-              </button>
-              <div className="flex-1 rounded-[14px] border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-slate-400">
-                Add Starter or Pro payment links in your environment to enable direct upgrades.
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </main>
   );
 }
 
-function SiteHeader({
-  usageLabel,
-  freeAuditsRemaining,
-}: {
-  usageLabel: string;
-  freeAuditsRemaining: number;
-}) {
+function SiteHeader({ usageLabel }: { usageLabel: string }) {
   return (
     <header className="px-4 pb-2 pt-4 sm:px-6 sm:pt-5">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 rounded-[18px] border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-xl">
@@ -944,16 +835,13 @@ function SiteHeader({
         <div className="hidden items-center gap-1 md:flex">
           <HeaderLink href="#preview" label="Preview" />
           <HeaderLink href="#results" label="Report" />
-          <HeaderLink href="#pricing" label="Pricing" />
+          <HeaderLink href="#support" label="Support" />
           <HeaderRoute href="/privacy" label="Privacy" />
           <HeaderRoute href="/terms" label="Terms" />
         </div>
 
         <div className="hidden sm:flex">
-          <UsageBadge
-            usageLabel={usageLabel}
-            freeAuditsRemaining={freeAuditsRemaining}
-          />
+          <UsageBadge usageLabel={usageLabel} />
         </div>
       </div>
     </header>
@@ -982,27 +870,10 @@ function HeaderRoute({ href, label }: { href: string; label: string }) {
   );
 }
 
-function UsageBadge({
-  usageLabel,
-  freeAuditsRemaining,
-}: {
-  usageLabel: string;
-  freeAuditsRemaining: number;
-}) {
+function UsageBadge({ usageLabel }: { usageLabel: string }) {
   return (
     <div className="inline-flex items-center gap-3 rounded-full border border-white/8 bg-white/[0.03] px-3 py-2 text-sm text-slate-300">
-      <div className="flex items-center gap-1.5">
-        {Array.from({ length: FREE_AUDIT_LIMIT }).map((_, index) => (
-          <span
-            key={index}
-            className={`h-1.5 w-6 rounded-full ${
-              index < freeAuditsRemaining
-                ? "bg-[rgba(124,140,255,0.92)]"
-                : "bg-white/10"
-            }`}
-          />
-        ))}
-      </div>
+      <span className="h-2 w-2 rounded-full bg-[rgba(124,140,255,0.92)]" />
       <span>{usageLabel}</span>
     </div>
   );
@@ -1088,7 +959,7 @@ function ProductPreview({
           </p>
           <div className="mt-4 space-y-4">
             <SidebarStat label="Main issue" value="Outcome too soft above the fold" />
-            <SidebarStat label="Pricing" value="Context appears too late" />
+            <SidebarStat label="Offer" value="Context appears too late" />
             <SidebarStat label="Trust" value="Legal and contact cues need stronger visibility" />
             <SidebarStat label="Launch readiness" value="Close, but still leaking confidence" />
           </div>
@@ -1296,7 +1167,7 @@ function CopyButton({
     <button
       type="button"
       onClick={onCopy}
-      className={`rounded-[12px] border px-3 py-1.5 text-xs font-medium transition duration-200 ${
+      className={`no-print rounded-[12px] border px-3 py-1.5 text-xs font-medium transition duration-200 ${
         isCopied
           ? "border-[rgba(123,136,255,0.38)] bg-[rgba(123,136,255,0.14)] text-white"
           : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/16 hover:bg-white/[0.05] hover:text-white"
@@ -1304,120 +1175,5 @@ function CopyButton({
     >
       {isCopied ? "Copied" : "Copy"}
     </button>
-  );
-}
-
-function PricingCard({
-  tier,
-  starterPaymentUrl,
-  proPaymentUrl,
-  onStartFree,
-  onOpenPaymentLink,
-}: {
-  tier: (typeof pricingTiers)[number];
-  starterPaymentUrl: string;
-  proPaymentUrl: string;
-  onStartFree: () => void;
-  onOpenPaymentLink: (url: string, plan: "starter" | "pro") => void;
-}) {
-  const paymentUrl =
-    tier.plan === "starter"
-      ? starterPaymentUrl
-      : tier.plan === "pro"
-        ? proPaymentUrl
-        : "";
-
-  const isPaymentPlan = tier.plan === "starter" || tier.plan === "pro";
-  const isDisabledPayment = isPaymentPlan && !paymentUrl;
-
-  return (
-    <div
-      className={`rounded-[28px] border p-1 ${
-        tier.featured
-          ? "border-[rgba(123,136,255,0.22)] bg-[linear-gradient(180deg,rgba(123,136,255,0.12),rgba(255,255,255,0.02))]"
-          : "border-white/8 bg-white/[0.02]"
-      }`}
-    >
-      <div className="flex h-full flex-col rounded-[24px] bg-[#0a0f1b]/92 p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-xl font-semibold tracking-[-0.02em] text-white">
-              {tier.name}
-            </h3>
-            <p className="mt-2 text-sm text-slate-400">{tier.description}</p>
-          </div>
-          {tier.featured ? (
-            <span className="rounded-full border border-[rgba(123,136,255,0.24)] bg-[rgba(123,136,255,0.12)] px-3 py-1 text-xs text-[rgb(204,210,255)]">
-              Recommended
-            </span>
-          ) : null}
-        </div>
-
-        <p className="mt-8 text-[2rem] font-semibold tracking-[-0.04em] text-white">
-          {tier.price}
-        </p>
-        <p className="mt-4 flex-1 text-sm leading-7 text-slate-400">{tier.subcopy}</p>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (tier.plan === "free") {
-              onStartFree();
-              return;
-            }
-
-            if (paymentUrl) {
-              onOpenPaymentLink(paymentUrl, tier.plan);
-            }
-          }}
-          disabled={isDisabledPayment}
-          className={`mt-8 inline-flex items-center justify-center rounded-[14px] px-4 py-3 text-sm font-semibold transition duration-200 ${
-            tier.featured
-              ? "bg-[linear-gradient(135deg,#7d8dff_0%,#6d74ff_100%)] text-white shadow-[0_16px_42px_rgba(83,93,255,0.26)] hover:-translate-y-0.5 hover:shadow-[0_20px_48px_rgba(83,93,255,0.32)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
-              : "border border-white/10 bg-white/[0.03] text-white hover:border-white/16 hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-white/10 disabled:hover:bg-white/[0.03]"
-          }`}
-        >
-          {isDisabledPayment ? "Payment link coming soon" : tier.cta}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function MiniPlan({
-  name,
-  description,
-  price,
-  actionLabel,
-  disabled,
-  onClick,
-}: {
-  name: string;
-  description: string;
-  price: string;
-  actionLabel: string;
-  disabled: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <div className="rounded-[18px] border border-white/8 bg-[#0b1020]/82 px-4 py-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-white">{name}</p>
-          <p className="text-sm text-slate-400">{description}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <p className="text-sm font-medium text-white">{price}</p>
-          <button
-            type="button"
-            onClick={onClick}
-            disabled={disabled}
-            className="rounded-[12px] border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-white/16 hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-white/10 disabled:hover:bg-white/[0.03]"
-          >
-            {actionLabel}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }

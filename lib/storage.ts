@@ -1,5 +1,3 @@
-export const FREE_AUDIT_LIMIT = 1;
-
 const AUDIT_COUNT_KEY = "launchroast-audit-count";
 
 export function getStoredAuditCount() {

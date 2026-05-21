@@ -1,13 +1,13 @@
 # LaunchRoast AI
 
-LaunchRoast AI is a Next.js landing page audit app for startup and SaaS teams. Users can paste a landing page URL or draft copy, generate a structured roast, and export the result as a PDF using browser print.
+LaunchRoast AI is a Next.js landing page audit app built as a free tool for founders, students, and indie builders. Users can paste a landing page URL or draft copy, generate a structured roast, and export the result as a PDF using browser print.
 
 ## Stack
 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Local audit limits with `localStorage`
+- Local usage tracking with `localStorage`
 - OpenRouter-ready API route with mock fallback
 
 ## Local setup
@@ -95,10 +95,8 @@ Documented variables:
 
 - `OPENROUTER_API_KEY`
   Optional. If set, LaunchRoast AI will request live audit output from OpenRouter. If omitted, the app falls back to a local mock audit response.
-- `NEXT_PUBLIC_STARTER_PAYMENT_URL`
-  Optional. If set, Starter pricing buttons will open this payment link in a new tab.
-- `NEXT_PUBLIC_PRO_PAYMENT_URL`
-  Optional. If set, Pro pricing buttons will open this payment link in a new tab.
+- `NEXT_PUBLIC_SUPPORT_URL`
+  Optional. If set, the support button opens this external link in a new tab with `noopener,noreferrer`. If omitted, the button falls back to a disabled "Support link coming soon" state.
 
 Recommended local file:
 
@@ -109,8 +107,7 @@ cp .env.example .env.local
 Vercel environment:
 
 - Add `OPENROUTER_API_KEY` in Project Settings → Environment Variables
-- Add `NEXT_PUBLIC_STARTER_PAYMENT_URL` if you want the Starter plan to open a hosted payment link
-- Add `NEXT_PUBLIC_PRO_PAYMENT_URL` if you want the Pro plan to open a hosted payment link
+- Add `NEXT_PUBLIC_SUPPORT_URL` if you want the support button to open an external support page
 - Redeploy after changing environment variables
 
 ## Vercel deployment
@@ -118,7 +115,7 @@ Vercel environment:
 1. Push the project to GitHub.
 2. Import the repo into Vercel.
 3. Add `OPENROUTER_API_KEY` in Vercel if you want live AI audits.
-4. Add `NEXT_PUBLIC_STARTER_PAYMENT_URL` and `NEXT_PUBLIC_PRO_PAYMENT_URL` if you want pricing and paywall buttons to open hosted payment links.
+4. Add `NEXT_PUBLIC_SUPPORT_URL` if you want the optional support button to open a hosted page.
 5. Deploy with the default Next.js build settings.
 
 This app is already structured for Vercel:
@@ -129,15 +126,15 @@ This app is already structured for Vercel:
 - no API keys are exposed client-side
 - analytics placeholders stay silent in production
 - `robots.txt`, `sitemap.xml`, and `/api/health` are included
-- payment flows use simple hosted links only; no card data is collected in this app
+- optional support uses a simple hosted link only; no card data is collected in this app
 
 ## Deployment notes
 
 - Set `OPENROUTER_API_KEY` in your deployment environment if you want live AI audits.
-- Set `NEXT_PUBLIC_STARTER_PAYMENT_URL` and `NEXT_PUBLIC_PRO_PAYMENT_URL` if you want Starter and Pro buttons to open hosted payment pages.
+- Set `NEXT_PUBLIC_SUPPORT_URL` if you want the support button to open a hosted support page.
 - The route blocks localhost and private-network URL fetching for safer deployment defaults.
 - Placeholder analytics are wired through a small local abstraction and do not connect to any paid service yet.
-- Payment links open in a new tab. If a link is not configured, the UI falls back to a disabled "Payment link coming soon" state.
+- The support link opens in a new tab. If a link is not configured, the UI falls back to a disabled "Support link coming soon" state.
 - Metadata is configured for a production deployment under `https://launchroast.ai`.
 - If you deploy to a different domain, update `metadataBase`, sitemap, and robots host values.
 - Placeholder contact email: `support@launchroast.ai`
@@ -147,5 +144,5 @@ This app is already structured for Vercel:
 - Replace placeholder legal copy in `/privacy` and `/terms`
 - Replace `support@launchroast.ai` with a real support email
 - Swap the analytics placeholder in `lib/analytics.ts`
-- Connect the upgrade modal to a live payment provider
+- Add a real hosted support link if you want optional project support enabled
 - Set the production site URL if you deploy on a domain other than `launchroast.ai`

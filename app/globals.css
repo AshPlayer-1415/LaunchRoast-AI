@@ -126,6 +126,10 @@ textarea {
 }
 
 @media print {
+  @page {
+    margin: 18mm 14mm;
+  }
+
   body {
     background: #ffffff;
     color: #111827;
@@ -135,6 +139,38 @@ textarea {
   body::after,
   .no-print {
     display: none !important;
+  }
+
+  body.printing-report main > * {
+    display: none !important;
+  }
+
+  body.printing-report #report-section {
+    display: block !important;
+  }
+
+  body.printing-report #audit-report-export,
+  body.printing-report #audit-report-export * {
+    visibility: visible !important;
+  }
+
+  body.printing-report #results,
+  body.printing-report #audit-report-export {
+    display: block !important;
+  }
+
+  body.printing-report #results {
+    margin: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  body.printing-report #audit-report-export {
+    position: static !important;
+    width: 100% !important;
+    background: #ffffff !important;
   }
 
   .print-surface {
@@ -157,5 +193,12 @@ textarea {
 
   .print-section {
     break-inside: avoid;
+  }
+
+  .print-card,
+  .print-section,
+  #audit-report-export > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
