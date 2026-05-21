@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="launchroast-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#79f2c0" />
+      <stop offset="100%" stop-color="#ff7b72" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#050816" />
+  <rect x="6" y="6" width="52" height="52" rx="16" fill="url(#launchroast-gradient)" />
+  <path d="M22 19h8v19h12v7H22V19Z" fill="#050816" />
+  <path d="M38 19h7l-5 11h6l-10 15 3-10h-6l5-16Z" fill="#050816" />
+</svg>
