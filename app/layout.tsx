@@ -56,12 +56,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning>
+    <html lang="en" data-theme="day" suppressHydrationWarning>
       <body>
         <script
           dangerouslySetInnerHTML={{
             __html:
-              'try{var t=localStorage.getItem("launchroast-theme");document.documentElement.dataset.theme=t==="neon"?"neon":"dark";}catch(e){document.documentElement.dataset.theme="dark";}',
+              'try{var t=localStorage.getItem("launchroast-theme");document.documentElement.dataset.theme=t==="night"?"night":"day";}catch(e){document.documentElement.dataset.theme="day";}',
           }}
         />
         <AnalyticsProvider />

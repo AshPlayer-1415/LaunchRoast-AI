@@ -14,7 +14,7 @@ import {
 } from "@/lib/audit";
 import { trackEvent } from "@/lib/analytics";
 import { exportAuditReportPdf } from "@/lib/pdf-report";
-import { getStoredAuditCount, incrementStoredAuditCount } from "@/lib/storage";
+import { incrementStoredAuditCount } from "@/lib/storage";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const tabOptions: Array<{ id: AuditInputType; label: string; helper: string }> = [
@@ -181,7 +181,6 @@ function getCtaStrengthScore(result: AuditResult) {
 export function LaunchRoastApp() {
   const [mode, setMode] = useState<AuditInputType>("url");
   const [input, setInput] = useState("");
-  const [auditCount, setAuditCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
   const [auditSource, setAuditSource] = useState<AuditResponseBody["source"] | null>(null);
@@ -197,10 +196,6 @@ export function LaunchRoastApp() {
   const [reportGeneratedAt, setReportGeneratedAt] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isHeaderCondensed, setIsHeaderCondensed] = useState(false);
-
-  useEffect(() => {
-    setAuditCount(getStoredAuditCount());
-  }, []);
 
   useEffect(() => {
     if (!copiedField) {
@@ -271,11 +266,6 @@ export function LaunchRoastApp() {
     return null;
   }, [mode, trimmedInput]);
 
-  const usageLabel =
-    auditCount > 0
-      ? `${auditCount} ${auditCount === 1 ? "check" : "checks"} run on this browser`
-      : "Free tool";
-
   const isAuditDisabled = !canRunAudit || isLoading;
   const clarityScore = result?.clarityScore ?? 81;
   const trustScore = result?.trustSafetyReview.trustScore ?? 78;
@@ -336,8 +326,7 @@ export function LaunchRoastApp() {
         clarityScore: payload.audit.clarityScore,
       });
 
-      const nextCount = incrementStoredAuditCount();
-      setAuditCount(nextCount);
+      incrementStoredAuditCount();
       document.getElementById("results")?.scrollIntoView({
         behavior: "smooth",
         block: "start",
@@ -392,11 +381,7 @@ export function LaunchRoastApp() {
 
   return (
     <main className="relative overflow-hidden">
-      <SiteHeader
-        usageLabel={usageLabel}
-        scrollProgress={scrollProgress}
-        isCondensed={isHeaderCondensed}
-      />
+      <SiteHeader scrollProgress={scrollProgress} isCondensed={isHeaderCondensed} />
 
       <section className="section-shell relative overflow-hidden pt-[calc(var(--nav-height)+1.6rem)] sm:pt-[calc(var(--nav-height)+2.5rem)]">
         <div className="hero-frame" />
@@ -879,11 +864,9 @@ export function LaunchRoastApp() {
 }
 
 function SiteHeader({
-  usageLabel,
   scrollProgress,
   isCondensed,
 }: {
-  usageLabel: string;
   scrollProgress: number;
   isCondensed: boolean;
 }) {
@@ -927,7 +910,6 @@ function SiteHeader({
           </nav>
 
           <div className="flex items-center justify-end gap-3">
-            <span className="status-badge hidden xl:inline-flex">{usageLabel}</span>
             <ThemeToggle />
           </div>
         </div>
